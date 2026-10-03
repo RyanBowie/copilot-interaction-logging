@@ -1,0 +1,1781 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<script>
+  (() => {
+    const param = new URLSearchParams(window.location.search).get("scoutTheme");
+    const theme =
+      param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+</script>
+<script>
+  (() => {
+    const root = document.documentElement;
+    root.classList.add("js");
+    if (new URLSearchParams(window.location.search).get("scoutTheme")) return;
+    try {
+      const saved = localStorage.getItem("cil-theme");
+      if (saved === "light" || saved === "dark") root.setAttribute("data-theme", saved);
+    } catch (e) { /* storage unavailable */ }
+  })();
+</script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Copilot Interaction Logging · Purview audit data in Dataverse</title>
+<meta name="description" content="Documentation-only build guide for copying Microsoft 365 Copilot interaction metadata from the Purview unified audit log into Dataverse with Power Automate and Microsoft Graph. Read the security warning, approval checklist and secret-handling options before you build.">
+<meta property="og:title" content="Copilot Interaction Logging">
+<meta property="og:description" content="Build guide: collect Purview Copilot interaction audit logs into Dataverse for usage reporting, with an explicit secret-handling decision for builders.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:,">
+<style>
+:root {
+  color-scheme: light;
+  --cp-bg: #f7f4ef;
+  --cp-bg-elevated: #fcfbf8;
+  --cp-surface: #ffffff;
+  --cp-surface-soft: #f5f5f5;
+  --cp-border: #dedede;
+  --cp-border-strong: #919191;
+  --cp-text: #242424;
+  --cp-text-muted: #5c5c5c;
+  --cp-text-soft: #6f6f6f;
+  --cp-accent: #b11f4b;
+  --cp-accent-hover: #9a1a41;
+  --cp-accent-soft: rgba(177, 31, 75, 0.08);
+  --cp-accent-fg: #ffffff;
+  --cp-success: #16a34a;
+  --cp-danger: #dc2626;
+  --cp-warning: #f59e0b;
+  --cp-link: #0078d4;
+  --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
+  --cp-overlay: rgba(255, 255, 255, 0.8);
+  --cp-panel: rgba(255, 255, 255, 0.86);
+  --cp-panel-strong: rgba(255, 255, 255, 0.96);
+  --cp-sheen: rgba(255, 255, 255, 0.55);
+  --cp-highlight: rgba(177, 31, 75, 0.12);
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --cp-bg: #3d3b3a;
+  --cp-bg-elevated: #343231;
+  --cp-surface: #292929;
+  --cp-surface-soft: #2e2e2e;
+  --cp-border: #474747;
+  --cp-border-strong: #5f5f5f;
+  --cp-text: #dedede;
+  --cp-text-muted: #919191;
+  --cp-text-soft: #b0b0b0;
+  --cp-accent: #fd8ea1;
+  --cp-accent-hover: #fb7b91;
+  --cp-accent-soft: rgba(253, 142, 161, 0.14);
+  --cp-accent-fg: #1a1a1a;
+  --cp-success: #4ade80;
+  --cp-danger: #f87171;
+  --cp-warning: #fbbf24;
+  --cp-link: #4da6ff;
+  --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+  --cp-overlay: rgba(41, 41, 41, 0.88);
+  --cp-panel: rgba(41, 41, 41, 0.72);
+  --cp-panel-strong: rgba(41, 41, 41, 0.96);
+  --cp-sheen: rgba(255, 255, 255, 0.04);
+  --cp-highlight: rgba(253, 142, 161, 0.12);
+}
+
+:root {
+  --header-h: 3.5rem;
+  --chips-h: 3rem;
+  --radius: 0.625rem;
+  --radius-card: 16px;
+  --card-shadow: 0 0 2px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.14);
+  --font: "Segoe UI", Aptos, Calibri, -apple-system, BlinkMacSystemFont, sans-serif;
+  --mono: Consolas, "Courier New", Courier, monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+body { margin: 0; background: var(--cp-bg); color: var(--cp-text); font-family: var(--font); font-size: 1rem; line-height: 1.6; }
+a { color: var(--cp-link); text-underline-offset: 2px; }
+a:hover { text-decoration-thickness: 2px; }
+:focus-visible { outline: 2px solid var(--cp-accent); outline-offset: 2px; }
+[hidden] { display: none !important; }
+[id] { scroll-margin-top: calc(var(--header-h) + var(--chips-h) + 12px); }
+h1, h2, h3, h4 { line-height: 1.25; margin: 0 0 12px; color: var(--cp-text); }
+h1 { font-size: clamp(1.9rem, 4vw, 2.75rem); letter-spacing: -0.01em; }
+h2 { font-size: 1.6rem; }
+h3 { font-size: 1.15rem; margin-top: 24px; }
+h4 { font-size: 1rem; margin-top: 16px; }
+p { margin: 0 0 12px; }
+ul, ol { margin: 0 0 12px; padding-left: 24px; }
+li + li { margin-top: 4px; }
+strong { font-weight: 650; }
+code, kbd, pre { font-family: var(--mono); font-size: 0.9em; }
+code { background: var(--cp-surface-soft); border: 1px solid var(--cp-border); border-radius: 4px; padding: 0 4px; overflow-wrap: anywhere; }
+pre { background: var(--cp-surface-soft); border: 1px solid var(--cp-border); border-radius: var(--radius); padding: 12px 16px; overflow-x: auto; }
+pre code { background: none; border: 0; padding: 0; }
+.visually-hidden { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.skip-link { position: absolute; left: 16px; top: -120px; z-index: 100; background: var(--cp-accent); color: var(--cp-accent-fg); padding: 8px 16px; border-radius: var(--radius); font-weight: 600; text-decoration: none; }
+.skip-link:focus { top: 8px; }
+html.js .no-js-only { display: none; }
+.muted { color: var(--cp-text-muted); }
+.small { font-size: 0.875rem; }
+
+/* Header */
+.site-header { position: sticky; top: 0; z-index: 50; height: var(--header-h); background: var(--cp-panel-strong); border-bottom: 1px solid var(--cp-border); }
+.site-header .inner { max-width: 1240px; height: 100%; margin: 0 auto; padding: 0 20px; display: flex; align-items: center; gap: 12px; }
+.brand { display: inline-flex; align-items: center; gap: 10px; color: var(--cp-text); text-decoration: none; font-weight: 700; min-width: 0; }
+.brand span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.brand-mark { width: 28px; height: 28px; flex: none; }
+.bm-bg { fill: var(--cp-accent); }
+.bm-fg { fill: none; stroke: var(--cp-accent-fg); stroke-width: 2; stroke-linecap: round; }
+.header-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.header-link { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid var(--cp-border); border-radius: var(--radius); background: var(--cp-surface); color: var(--cp-text); text-decoration: none; font-size: 0.9rem; white-space: nowrap; }
+.header-link:hover { border-color: var(--cp-border-strong); }
+.header-link svg, .icon-btn svg { width: 18px; height: 18px; flex: none; }
+.icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border: 1px solid var(--cp-border); border-radius: var(--radius); background: var(--cp-surface); color: var(--cp-text); cursor: pointer; padding: 0; }
+.icon-btn:hover { border-color: var(--cp-border-strong); }
+.theme-toggle .icon-sun { display: none; }
+html[data-theme="dark"] .theme-toggle .icon-sun { display: block; }
+html[data-theme="dark"] .theme-toggle .icon-moon { display: none; }
+@media (max-width: 560px) { .header-link .label { display: none; } }
+
+/* Navigation */
+.chips { position: sticky; top: var(--header-h); z-index: 40; background: var(--cp-panel-strong); border-bottom: 1px solid var(--cp-border); overflow-x: auto; scrollbar-width: thin; }
+.chips ul { display: flex; gap: 8px; list-style: none; margin: 0; padding: 8px 20px; width: max-content; }
+.chips li + li { margin-top: 0; }
+.chips a { display: inline-block; padding: 4px 12px; border: 1px solid var(--cp-border); border-radius: 999px; background: var(--cp-surface); color: var(--cp-text); text-decoration: none; font-size: 0.85rem; white-space: nowrap; }
+.chips a[aria-current="true"] { background: var(--cp-accent); border-color: var(--cp-accent); color: var(--cp-accent-fg); }
+.layout { max-width: 1240px; margin: 0 auto; padding: 0 20px 64px; }
+.toc { display: none; }
+.toc-title { margin: 0 0 8px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--cp-text-muted); }
+.toc ol { list-style: none; margin: 0; padding: 0; border-left: 1px solid var(--cp-border); }
+.toc li + li { margin-top: 0; }
+.toc a { display: block; margin-left: -1px; padding: 4px 12px; border-left: 2px solid transparent; color: var(--cp-text-muted); text-decoration: none; font-size: 0.9rem; line-height: 1.4; }
+.toc a:hover { color: var(--cp-text); }
+.toc a[aria-current="true"] { color: var(--cp-accent); border-left-color: var(--cp-accent); background: var(--cp-accent-soft); font-weight: 600; }
+main { min-width: 0; }
+@media (min-width: 1100px) {
+  :root { --chips-h: 0px; }
+  .chips { display: none; }
+  .layout { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 40px; }
+  .toc { display: block; position: sticky; top: calc(var(--header-h) + 24px); align-self: start; max-height: calc(100vh - var(--header-h) - 48px); overflow-y: auto; margin-top: 40px; }
+}
+
+/* Sections and hero */
+.section { padding-top: 56px; }
+.section > p, .section > ul, .section > ol:not(.steps):not(.stepper) { max-width: 80ch; }
+.section-kicker { margin: 0 0 4px; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--cp-accent); }
+.hero { padding-top: 40px; }
+.pill { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 16px; padding: 4px 12px; border: 1px solid var(--cp-highlight); border-radius: 999px; background: var(--cp-accent-soft); color: var(--cp-accent); font-size: 0.85rem; font-weight: 600; }
+.lede { max-width: 66ch; font-size: 1.15rem; color: var(--cp-text-muted); }
+.cta-row { display: flex; flex-wrap: wrap; gap: 12px; margin: 20px 0 24px; }
+.btn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border: 1px solid var(--cp-border-strong); border-radius: var(--radius); background: var(--cp-surface); color: var(--cp-text); font: inherit; font-weight: 600; line-height: 1.4; text-decoration: none; cursor: pointer; }
+.btn:hover { border-color: var(--cp-text); }
+.btn-primary { background: var(--cp-accent); border-color: var(--cp-accent); color: var(--cp-accent-fg); }
+.btn-primary:hover { background: var(--cp-accent-hover); border-color: var(--cp-accent-hover); }
+.btn-sm { padding: 4px 12px; font-size: 0.85rem; }
+.btn[aria-disabled="true"] { opacity: 0.5; cursor: not-allowed; }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; list-style: none; margin: 0; padding: 0; }
+.facts li { margin: 0; padding: 12px 16px; border: 1px solid var(--cp-border); border-radius: var(--radius); background: var(--cp-surface); box-shadow: var(--card-shadow); }
+.facts strong { display: block; }
+.facts span { color: var(--cp-text-muted); font-size: 0.85rem; }
+
+/* Cards, callouts, badges */
+.card { margin: 16px 0; padding: 20px 24px; border: 1px solid var(--cp-border); border-radius: var(--radius-card); background: var(--cp-surface); box-shadow: var(--card-shadow); }
+.card > :last-child, .callout > :last-child, .option-panel > :last-child { margin-bottom: 0; }
+.card h3:first-child, .card h4:first-child, .option-panel h3:first-child { margin-top: 0; }
+.grid-2, .grid-3 { display: grid; gap: 16px; margin: 16px 0; }
+.grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.grid-2 > .card, .grid-3 > .card { margin: 0; }
+@media (max-width: 900px) { .grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 720px) { .grid-2, .grid-3 { grid-template-columns: minmax(0, 1fr); } }
+.callout { margin: 16px 0; padding: 16px 20px; border: 1px solid var(--cp-border); border-left: 4px solid var(--cp-border-strong); border-radius: var(--radius); background: var(--cp-surface); }
+.callout-title { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-weight: 700; }
+.callout-title svg { width: 18px; height: 18px; flex: none; }
+.callout-danger { border-left-color: var(--cp-danger); background: var(--cp-surface-soft); background: color-mix(in srgb, var(--cp-danger) 8%, var(--cp-surface)); }
+.callout-danger .callout-title { color: var(--cp-danger); }
+.callout-warning { border-left-color: var(--cp-warning); background: var(--cp-surface-soft); background: color-mix(in srgb, var(--cp-warning) 10%, var(--cp-surface)); }
+.callout-warning .callout-title svg { color: var(--cp-warning); }
+.callout-info { border-left-color: var(--cp-link); background: var(--cp-surface-soft); background: color-mix(in srgb, var(--cp-link) 7%, var(--cp-surface)); }
+.callout-info .callout-title svg { color: var(--cp-link); }
+.callout-accent { border-left-color: var(--cp-accent); background: var(--cp-accent-soft); }
+.badge { display: inline-block; padding: 0 8px; border: 1px solid var(--cp-border-strong); border-radius: 999px; background: var(--cp-surface-soft); color: var(--cp-text); font-size: 0.75rem; font-weight: 600; line-height: 1.6; white-space: nowrap; vertical-align: middle; }
+.badge-success { border-color: var(--cp-success); background: color-mix(in srgb, var(--cp-success) 14%, var(--cp-surface)); }
+.badge-warning { border-color: var(--cp-warning); background: color-mix(in srgb, var(--cp-warning) 16%, var(--cp-surface)); }
+.badge-danger { border-color: var(--cp-danger); background: color-mix(in srgb, var(--cp-danger) 12%, var(--cp-surface)); }
+.badge-accent { border-color: var(--cp-accent); background: var(--cp-accent-soft); }
+
+/* Tables and details */
+.table-wrap { margin: 16px 0; overflow-x: auto; border: 1px solid var(--cp-border); border-radius: var(--radius); background: var(--cp-surface); }
+table { width: 100%; border-collapse: collapse; font-size: 0.925rem; }
+caption { padding: 8px 12px; text-align: left; font-weight: 600; color: var(--cp-text-muted); }
+th, td { padding: 8px 12px; border-bottom: 1px solid var(--cp-border); text-align: left; vertical-align: top; }
+thead th { background: var(--cp-surface-soft); font-weight: 600; white-space: nowrap; }
+tbody th { font-weight: 600; }
+tbody tr:last-child > * { border-bottom: 0; }
+tr.is-relevant > * { background: var(--cp-highlight); }
+.nowrap { white-space: nowrap; }
+#bf-table td { white-space: nowrap; }
+#bf-table thead th, table.wrap-head thead th { white-space: normal; }
+/* Narrow screens: the script labels each cell and adds .stack, so each row becomes a card */
+@media (max-width: 640px) {
+  table.stack, table.stack tbody, table.stack tr, table.stack th, table.stack td { display: block; }
+  table.stack thead { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+  table.stack tbody tr { padding: 12px 16px; border-bottom: 1px solid var(--cp-border); }
+  table.stack tbody tr:last-child { border-bottom: 0; }
+  table.stack tbody tr > * { padding: 4px 0; border-bottom: 0; overflow-wrap: break-word; }
+  table.stack tbody tr > :first-child { padding-top: 0; font-weight: 600; }
+  table.stack td[data-label]::before { content: attr(data-label); content: attr(data-label) / ""; display: block; color: var(--cp-text-muted); font-size: 0.8rem; font-weight: 600; }
+  table.stack td:empty { display: none; }
+  table.stack tr.is-relevant { background: var(--cp-highlight); }
+  table.stack tr.is-relevant > * { background: transparent; }
+}
+details { margin: 12px 0; border: 1px solid var(--cp-border); border-radius: var(--radius); background: var(--cp-surface); }
+details > summary { padding: 12px 16px; font-weight: 600; cursor: pointer; }
+details[open] > summary { border-bottom: 1px solid var(--cp-border); }
+.details-body { padding: 12px 16px; }
+.details-body > :last-child { margin-bottom: 0; }
+.details-body .table-wrap { margin: 0 0 12px; }
+/* Copy boxes */
+.code-box { display: flex; align-items: flex-start; gap: 8px; margin: 8px 0 12px; padding: 8px 8px 8px 12px; border: 1px solid var(--cp-border); border-radius: var(--radius); background: var(--cp-surface-soft); }
+.code-box code { flex: 1; min-width: 0; padding: 4px 0; border: 0; background: none; white-space: pre-wrap; overflow-wrap: anywhere; }
+.copy-btn { flex: none; }
+
+/* Diagram */
+.diagram-wrap { margin: 16px 0; padding: 12px; overflow-x: auto; border: 1px solid var(--cp-border); border-radius: var(--radius-card); background: var(--cp-surface); }
+.diagram-wrap svg { display: block; width: 100%; min-width: 820px; height: auto; }
+.d-band { fill: var(--cp-bg-elevated); stroke: var(--cp-border); }
+.d-band-title { font: 700 12px var(--font); fill: var(--cp-accent); letter-spacing: 0.06em; }
+.d-box { fill: var(--cp-surface); stroke: var(--cp-border-strong); stroke-width: 1.25; }
+.d-title { font: 700 13px var(--font); fill: var(--cp-text); }
+.d-text { font: 12px var(--font); fill: var(--cp-text-muted); }
+.d-label { font: 600 11px var(--font); fill: var(--cp-text-muted); }
+.d-mono { font-family: var(--mono); }
+.d-arrow { fill: none; stroke: var(--cp-text-muted); stroke-width: 1.5; }
+.d-arrowhead { fill: var(--cp-text-muted); }
+.d-loop { fill: none; stroke: var(--cp-accent); stroke-width: 1.5; stroke-dasharray: 6 4; }
+.d-loop-label { font: 600 12px var(--font); fill: var(--cp-accent); }
+.d-ok { fill: var(--cp-surface); stroke: var(--cp-success); stroke-width: 2; }
+.d-bad { fill: var(--cp-surface); stroke: var(--cp-danger); stroke-width: 2; }
+.d-store { fill: var(--cp-accent-soft); stroke: var(--cp-accent); }
+.d-store-text { font: 600 12px var(--font); fill: var(--cp-text); }
+
+/* Steps */
+.steps, .stepper { list-style: none; margin: 16px 0; padding: 0; counter-reset: step; }
+.steps > li, .stepper > li { position: relative; margin: 0; padding: 0 0 20px 48px; counter-increment: step; }
+.steps > li::before, .stepper > li::before { content: counter(step); position: absolute; left: 0; top: 0; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid var(--cp-accent); border-radius: 50%; background: var(--cp-accent-soft); color: var(--cp-accent); font-size: 0.9rem; font-weight: 700; }
+.steps > li::after, .stepper > li::after { content: ""; position: absolute; left: 15px; top: 38px; bottom: 6px; width: 2px; background: var(--cp-border); }
+.steps > li:last-child::after, .stepper > li:last-child::after { display: none; }
+.step-title { display: block; margin-bottom: 4px; font-weight: 700; }
+.stepper > li > .card { margin: 0; }
+.stepper > li.is-done::before { content: "\2713"; border-color: var(--cp-success); background: var(--cp-success); color: var(--cp-accent-fg); }
+.step-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-bottom: 8px; }
+.step-head h3 { margin: 0; }
+.step-done { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--cp-text-muted); cursor: pointer; }
+
+/* Forms, checklist, progress */
+input[type="text"], input[type="date"], input[type="search"] { padding: 6px 10px; border: 1px solid var(--cp-border-strong); border-radius: var(--radius); background: var(--cp-surface); color: var(--cp-text); font: inherit; }
+input[type="checkbox"], input[type="radio"] { width: 18px; height: 18px; margin: 0; accent-color: var(--cp-accent); flex: none; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 12px 0; }
+.progress { flex: 1 1 200px; max-width: 360px; height: 10px; overflow: hidden; border: 1px solid var(--cp-border); border-radius: 999px; background: var(--cp-surface-soft); }
+.progress-bar { width: 0; height: 100%; background: var(--cp-accent); transition: width 0.2s ease; }
+.checklist { display: grid; gap: 8px; margin: 16px 0; padding: 0; list-style: none; }
+.checklist > li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 12px; margin: 0; padding: 12px 16px; border: 1px solid var(--cp-border); border-radius: var(--radius); background: var(--cp-surface); }
+.checklist > li > input { margin-top: 4px; }
+.checklist > li.is-checked { border-color: var(--cp-success); background: var(--cp-surface-soft); background: color-mix(in srgb, var(--cp-success) 7%, var(--cp-surface)); }
+.checklist label { cursor: pointer; }
+.checklist .owner { grid-column: 2; }
+.checklist .owner input { width: 100%; max-width: 440px; font-size: 0.9rem; }
+.field { display: flex; flex-direction: column; gap: 4px; font-size: 0.9rem; }
+.field > label, .field > span { font-weight: 600; }
+.form-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px; margin: 12px 0; }
+.check-inline { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+.msg { margin: 8px 0; padding: 8px 12px; border: 1px solid var(--cp-border); border-left-width: 4px; border-radius: var(--radius); font-size: 0.9rem; }
+.msg-warn { border-left-color: var(--cp-warning); background: var(--cp-surface-soft); background: color-mix(in srgb, var(--cp-warning) 10%, var(--cp-surface)); }
+.msg-error { border-left-color: var(--cp-danger); background: var(--cp-surface-soft); background: color-mix(in srgb, var(--cp-danger) 8%, var(--cp-surface)); }
+
+/* Secret chooser */
+.choice-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 16px 0; padding: 0; border: 0; }
+.choice-grid legend { margin-bottom: 8px; padding: 0; font-weight: 700; }
+@media (max-width: 820px) { .choice-grid { grid-template-columns: minmax(0, 1fr); } }
+.choice { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; padding: 16px; border: 1px solid var(--cp-border); border-radius: var(--radius-card); background: var(--cp-surface); box-shadow: var(--card-shadow); cursor: pointer; }
+.choice > input { margin-top: 3px; }
+.choice-name { font-weight: 700; }
+.choice-desc { grid-column: 2; font-size: 0.9rem; color: var(--cp-text-muted); }
+.choice.is-selected { border-color: var(--cp-accent); background: var(--cp-accent-soft); box-shadow: 0 0 0 1px var(--cp-accent); }
+.option-panel { margin: 16px 0; padding: 20px 24px; border: 1px solid var(--cp-border); border-top: 4px solid var(--cp-accent); border-radius: var(--radius-card); background: var(--cp-surface); box-shadow: var(--card-shadow); }
+.option-panel dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 16px; margin: 0 0 16px; }
+.option-panel dt { font-weight: 600; color: var(--cp-text-muted); }
+.option-panel dd { margin: 0; }
+@media (max-width: 720px) { .option-panel dl { grid-template-columns: minmax(0, 1fr); gap: 2px; } .option-panel dd { margin-bottom: 8px; } }
+
+/* Link lists */
+.link-list { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 12px 0; padding: 0; list-style: none; }
+.link-list li + li { margin-top: 0; }
+
+/* Footer */
+.site-footer { margin-top: 32px; padding: 32px 20px; border-top: 1px solid var(--cp-border); background: var(--cp-bg-elevated); color: var(--cp-text-muted); font-size: 0.875rem; }
+.site-footer .inner { max-width: 1240px; margin: 0 auto; }
+.site-footer p { max-width: 90ch; }
+
+@media print {
+  .site-header, .chips, .toc, .skip-link, .cta-row, .copy-btn, [data-jsonly], .no-print { display: none !important; }
+  [data-option-panel][hidden], [data-step3][hidden] { display: block !important; }
+  body { background: var(--cp-surface); }
+  .layout { display: block; max-width: none; padding: 0; }
+  .section { padding-top: 24px; }
+  .card, .option-panel, .facts li, .choice { box-shadow: none; }
+  .card, .callout, .option-panel, .checklist > li, .steps > li, .stepper > li, tr, details, .diagram-wrap { break-inside: avoid; }
+  .diagram-wrap svg { min-width: 0; }
+  .table-wrap { overflow: visible; }
+}
+/* Gallery and lightbox */
+.gallery { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 16px 0; padding: 0; list-style: none; }
+.gallery > li, .gallery > li + li { margin: 0; }
+@media (max-width: 900px) { .gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 720px) { .gallery { grid-template-columns: minmax(0, 1fr); } }
+figure.shot { margin: 0; }
+.grid-2 > figure.shot { margin: 16px 0; }
+.shot a[data-lightbox] { display: block; padding: 8px; border: 1px solid var(--cp-border); border-radius: var(--radius); background: var(--cp-surface); box-shadow: var(--card-shadow); cursor: zoom-in; }
+.shot a[data-lightbox]:hover, .shot a[data-lightbox]:focus-visible { border-color: var(--cp-accent); }
+.shot img { display: block; width: 100%; }
+.gallery img { height: 220px; object-fit: contain; object-position: top; }
+.shot-overview img { height: auto; max-height: 560px; object-fit: contain; object-position: top; }
+.report-shot img { height: auto; }
+.shot figcaption { margin-top: 6px; color: var(--cp-text-muted); font-size: 0.875rem; }
+.phase-list { margin: 12px 0; padding: 0; list-style: none; }
+.phase-list > li + li { margin-top: 8px; }
+dialog#lightbox { width: min(1200px, 95vw); max-width: 95vw; max-height: 95vh; padding: 0; overflow: auto; border: 1px solid var(--cp-border); border-radius: var(--radius-card); background: var(--cp-surface); color: var(--cp-text); box-shadow: var(--cp-shadow); }
+dialog#lightbox::backdrop { background: var(--cp-overlay); }
+.lightbox-bar { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; border-bottom: 1px solid var(--cp-border); background: var(--cp-panel-strong); }
+.lightbox-bar p, .lightbox-bar form { margin: 0; }
+#lightbox-img { display: block; max-width: 100%; height: auto; margin: 0 auto; }
+@media print {
+  dialog#lightbox { display: none; }
+  .gallery img { height: auto; }
+}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="#top">
+      <svg class="brand-mark" viewBox="0 0 28 28" aria-hidden="true"><rect class="bm-bg" width="28" height="28" rx="7"/><path class="bm-fg" d="M8 9h12M8 14h12M8 19h7"/></svg>
+      <span>Copilot Interaction Logging</span>
+    </a>
+    <div class="header-actions">
+      <a class="header-link" href="https://github.com/RyanBowie/copilot-interaction-logging#readme" aria-label="View the repository on GitHub">
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m8 7-5 5 5 5M16 7l5 5-5 5"/></svg><span class="label">GitHub</span>
+      </a>
+      <button type="button" class="icon-btn theme-toggle" id="theme-toggle" aria-label="Switch to dark theme" data-jsonly hidden>
+        <svg class="icon-moon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        <svg class="icon-sun" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<nav class="chips" id="chips" aria-label="Sections">
+  <ul>
+    <li><a href="#top">Overview</a></li>
+    <li><a href="#what">What you build</a></li>
+    <li><a href="#read-first">Read this first</a></li>
+    <li><a href="#alternatives">Built-in options</a></li>
+    <li><a href="#how">How it works</a></li>
+    <li><a href="#gallery">Inside the flow</a></li>
+    <li><a href="#checklist">Approval checklist</a></li>
+    <li><a href="#prereqs">Prerequisites</a></li>
+    <li><a href="#secrets">Secret handling</a></li>
+    <li><a href="#env-vars">Environment variables</a></li>
+    <li><a href="#build">Build steps</a></li>
+    <li><a href="#data-model">Data model</a></li>
+    <li><a href="#reporting">Reporting</a></li>
+    <li><a href="#failures">Failure states</a></li>
+    <li><a href="#operations">Operations</a></li>
+    <li><a href="#troubleshooting">Troubleshooting</a></li>
+    <li><a href="#limitations">Limitations</a></li>
+    <li><a href="#export-hygiene">Export hygiene</a></li>
+    <li><a href="#origins">Origins</a></li>
+    <li><a href="#related">Related</a></li>
+  </ul>
+</nav>
+
+<div class="layout">
+  <nav class="toc" aria-label="On this page">
+    <p class="toc-title">On this page</p>
+    <ol>
+      <li><a href="#top">Overview</a></li>
+      <li><a href="#what">What you build</a></li>
+      <li><a href="#read-first">Read this first</a></li>
+      <li><a href="#alternatives">Built-in options first</a></li>
+      <li><a href="#how">How it works</a></li>
+      <li><a href="#gallery">Inside the flow</a></li>
+      <li><a href="#checklist">Approval checklist</a></li>
+      <li><a href="#prereqs">Prerequisites and permissions</a></li>
+      <li><a href="#secrets">Secret handling decision</a></li>
+      <li><a href="#env-vars">Environment variables</a></li>
+      <li><a href="#build">Build steps</a></li>
+      <li><a href="#data-model">Data model</a></li>
+      <li><a href="#reporting">Reporting</a></li>
+      <li><a href="#failures">Failure states and monitoring</a></li>
+      <li><a href="#operations">Operations</a></li>
+      <li><a href="#troubleshooting">Troubleshooting</a></li>
+      <li><a href="#limitations">Limitations</a></li>
+      <li><a href="#export-hygiene">Export hygiene (ALM)</a></li>
+      <li><a href="#origins">Origins and credit</a></li>
+      <li><a href="#related">Related</a></li>
+    </ol>
+  </nav>
+
+  <main id="main" tabindex="-1">
+    <section class="section hero" id="top" aria-labelledby="page-title">
+      <p class="pill">Community project. This is not a Microsoft product.</p>
+      <h1 id="page-title">Copilot Interaction Logging</h1>
+      <p class="lede">A build guide for collecting <strong>metadata</strong> about Microsoft 365 Copilot and Copilot Studio interactions from the Microsoft Purview unified audit log into Dataverse, using two Power Automate cloud flows and the Microsoft Graph audit log query API. From Dataverse you can report on usage with Power BI or any Dataverse client. The build collects no prompt or response text.</p>
+      <p>It is a personal project shared as-is under the <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/LICENSE">MIT licence</a>. Microsoft does not support it, and no SLA or warranty applies. Read the whole of this page, then build and test in a non-production environment and get the approvals listed below <strong>before</strong> you build it anywhere that holds real data.</p>
+      <div class="callout callout-info" role="note">
+        <p class="callout-title"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5h.01"/></svg>Documentation only</p>
+        <p>No solution package, flow export or source code is published. This page and the <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md">action-by-action reference</a> describe a tested reference build in enough detail for you to build your own. You own, secure and maintain whatever you build.</p>
+      </div>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="#read-first">Read the warning</a>
+        <a class="btn" href="#build">Build steps</a>
+        <a class="btn" href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md">Action reference</a>
+      </div>
+      <ul class="facts" aria-label="At a glance">
+        <li><strong>Metadata only</strong><span>No prompt or response text</span></li>
+        <li><strong>3 Dataverse tables</strong><span>Interactions, runs and errors</span></li>
+        <li><strong>Daily + back-fill</strong><span>Scheduled and manual flows</span></li>
+        <li><strong>Documentation only</strong><span>No package: you build it</span></li>
+        <li><strong>MIT licence</strong><span>As-is, no SLA</span></li>
+      </ul>
+    </section>
+
+    <section class="section" id="what" aria-labelledby="what-h">
+      <p class="section-kicker">Overview</p>
+      <h2 id="what-h">What you build</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th scope="col">Component</th><th scope="col">What it is</th><th scope="col">Details</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">App registration</th><td>A Microsoft Entra ID app with the Microsoft Graph <strong>application</strong> permission <code>AuditLogsQuery.Read.All</code></td><td><a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#graph-permissions">Graph permissions</a></td></tr>
+            <tr><th scope="row">Client secret store</th><td>Azure Key Vault (recommended) or a plain-text environment variable. <strong>You decide.</strong></td><td><a href="#secrets">Secret-handling decision</a></td></tr>
+            <tr><th scope="row">Dataverse tables</th><td>Copilot Interactions, Copilot Interaction Flow Runs and Copilot Interaction Flow Run Errors</td><td><a href="#data-model">Data model</a></td></tr>
+            <tr><th scope="row">Environment variables</th><td>Seven, plus three legacy ones to leave out</td><td><a href="#env-vars">Environment variables</a></td></tr>
+            <tr><th scope="row">Connection reference</th><td>One, for Microsoft Dataverse</td><td><a href="#build">Build steps</a></td></tr>
+            <tr><th scope="row">Scheduled flow</th><td>Runs daily and collects one UTC day from four days ago. 85 actions in the reference build.</td><td><a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md">Action reference</a></td></tr>
+            <tr><th scope="row">Manual flow</th><td>Back-fills a date range you choose. 81 actions in the reference build.</td><td><a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#the-manual-flow">The manual flow</a></td></tr>
+            <tr><th scope="row">Report</th><td>Your own, for example Power BI with the Dataverse connector</td><td><a href="#reporting">Reporting</a></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Build everything inside one Dataverse solution in a development environment, then promote it as a managed solution (see <a href="#build">Build steps</a>).</p>
+    </section>
+
+    <section class="section" id="read-first" aria-labelledby="read-first-h">
+      <p class="section-kicker">Security</p>
+      <h2 id="read-first-h">Read this first: high-privilege, tenant-wide access</h2>
+      <div class="callout callout-danger" role="note">
+        <p class="callout-title"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 21h20L12 3z"/><path d="M12 10v5M12 18h.01"/></svg>Warning</p>
+        <p>The flows sign in as an Entra ID <strong>app registration</strong> that holds the Microsoft Graph <strong>application</strong> permission <code>AuditLogsQuery.Read.All</code>.</p>
+        <ul>
+          <li><strong>The permission covers the whole tenant.</strong> Application permissions can't be scoped to users, departments or sites, and this one reads the audit log for <strong>every workload and record type</strong>: Exchange, SharePoint, OneDrive, Entra ID, Teams and more, not only Copilot. The flows ask only for Copilot records, but the permission itself is not limited to them.</li>
+          <li><strong>Whoever holds the credential holds that access.</strong> That includes anyone who can read the client secret or the Key Vault secret, and any automation that can. Treat the credential like a privileged admin credential.</li>
+          <li><strong>The collected rows are personal data.</strong> Each row holds the user's UPN, client IP address and region, plus the names of the files, sites and other resources Copilot accessed. File and site names can reveal confidential work.</li>
+          <li><strong>Flow run history shows raw audit records.</strong> In the reference build, the HTTP actions' <em>outputs</em> and the per-record actions aren't secured. Flow owners, co-owners and environment admins can therefore read the raw Graph responses and each record's values, including UPNs and IP addresses, for the run-history retention period (28 days by default). In your build, secure them as described in <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#securing-run-history">Securing run history</a>; see also <a href="#run-history-exposure">Run history exposure</a>.</li>
+        </ul>
+      </div>
+      <p>The app registration needs only <code>AuditLogsQuery.Read.All</code>. Microsoft Graph offers workload-scoped variants such as <code>AuditLogsQuery-Exchange.Read.All</code> and <code>AuditLogsQuery-SharePoint.Read.All</code>, but none is documented as covering Copilot interaction records. The reference build hasn't been tested with them. <code>AuditLog.Read.All</code> is <strong>not</strong> enough for the audit log query API. See the <a href="https://learn.microsoft.com/graph/api/security-auditcoreroot-post-auditlogqueries?view=graph-rest-beta">API permissions</a> and the <a href="https://learn.microsoft.com/graph/permissions-reference">permissions reference</a>.</p>
+    </section>
+
+    <section class="section" id="alternatives" aria-labelledby="alternatives-h">
+      <p class="section-kicker">Before you start</p>
+      <h2 id="alternatives-h">Do you need this? Built-in options first</h2>
+      <p>Microsoft already provides several supported ways to see Copilot activity. Check whether one of them meets the need before you build and maintain a custom collector.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th scope="col">Need</th><th scope="col">Built-in option</th><th scope="col">Notes</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Adoption and usage numbers</th><td><a href="https://learn.microsoft.com/microsoft-365/admin/activity-reports/microsoft-365-copilot-usage">Microsoft 365 Copilot usage report</a> in the Microsoft 365 admin center; <a href="https://learn.microsoft.com/viva/insights/org-team-insights/copilot-dashboard">Copilot Dashboard</a> (Viva Insights)</td><td>Aggregated, supported, no custom code.</td></tr>
+            <tr><th scope="row">Search or investigate individual interactions</th><td><a href="https://learn.microsoft.com/purview/audit-search">Microsoft Purview Audit search</a> (<a href="https://learn.microsoft.com/purview/audit-copilot">Copilot audit records</a>)</td><td>180 days' retention with Audit (Standard). Audit (Premium) keeps records for 1 year, or up to 10 years with an add-on (<a href="https://learn.microsoft.com/purview/audit-log-retention-policies">retention policies</a>).</td></tr>
+            <tr><th scope="row">AI data-security posture, risky prompts, oversharing</th><td><a href="https://learn.microsoft.com/purview/dspm-for-ai">Microsoft Purview DSPM for AI</a></td><td>Covers prompts and responses, which this build deliberately does not collect.</td></tr>
+            <tr><th scope="row">SIEM, long-term retention, correlation with security data</th><td><a href="https://learn.microsoft.com/azure/azure-monitor/reference/tables/copilotactivity">Microsoft Sentinel <code>CopilotActivity</code> table</a> (<a href="https://learn.microsoft.com/azure/sentinel/sentinel-tables-connectors-reference">connector reference</a>)</td><td>Managed connector; retention is set in Log Analytics.</td></tr>
+            <tr><th scope="row">Hunting across Microsoft 365 activity</th><td><a href="https://learn.microsoft.com/defender-xdr/advanced-hunting-cloudappevents-table">Defender XDR advanced hunting <code>CloudAppEvents</code></a> (application "Microsoft Copilot for Microsoft 365"; <a href="https://learn.microsoft.com/defender-cloud-apps/release-note-archive#march-2024">release note</a>)</td><td>Requires Defender for Cloud Apps.</td></tr>
+            <tr><th scope="row">Bulk programmatic export</th><td><a href="https://learn.microsoft.com/office/office-365-management-api/office-365-management-activity-api-reference">Office 365 Management Activity API</a> (<a href="https://learn.microsoft.com/office/office-365-management-api/copilot-schema">Copilot schema</a>)</td><td>Subscription-based content feed.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout callout-accent">
+        <p><strong>This build fits a narrower need.</strong> It suits you when you want per-interaction rows in <strong>your own Dataverse environment</strong>, for example to join with your own agent inventory in Power BI or to keep summaries beyond your audit retention, and none of the options above is practical.</p>
+      </div>
+      <p>Prompts and responses aren't held in the audit log. They're stored in users' mailboxes and are subject to your retention and eDiscovery controls (<a href="https://learn.microsoft.com/purview/audit-copilot">Copilot audit logs</a>).</p>
+    </section>
+
+    <section class="section" id="how" aria-labelledby="how-h">
+      <p class="section-kicker">Design</p>
+      <h2 id="how-h">How it works</h2>
+      <p>Two flows share the same logic: a <strong>scheduled</strong> flow that collects one day at a time, and a <strong>manual</strong> flow for backfills and re-runs.</p>
+      <div class="diagram-wrap">
+        <svg viewBox="0 0 1000 600" role="img" aria-labelledby="flow-title flow-desc">
+          <title id="flow-title">How a collection run works</title>
+          <desc id="flow-desc">Start: the trigger sets the time window, the client secret is resolved from Key Vault or a plain-text variable, a Flow Runs row is written and a Microsoft Graph audit log query for CopilotInteraction records is created. Collect: the flow polls the query every 60 seconds until it succeeds, then a paging loop reads 500 records at a time, upserts each record into the Copilot Interactions table and updates the run counts, following the next-page link. Finish: if collection is complete the run succeeds; otherwise an error row is written and the run fails with CollectionIncomplete. All data is stored in three Dataverse tables.</desc>
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path class="d-arrowhead" d="M0 0 10 5 0 10z"/>
+            </marker>
+          </defs>
+
+          <rect class="d-band" x="10" y="10" width="980" height="150" rx="12"/>
+          <text class="d-band-title" x="32" y="30">1 · START</text>
+          <rect class="d-box" x="20" y="42" width="176" height="88" rx="10"/>
+          <text class="d-title" x="32" y="66">Trigger</text>
+          <text class="d-text" x="32" y="86">Daily: UTC day 4 days ago</text>
+          <text class="d-text" x="32" y="102">Manual: StartDate →</text>
+          <text class="d-text" x="32" y="118">EndDate (exclusive)</text>
+          <rect class="d-box" x="216" y="42" width="176" height="88" rx="10"/>
+          <text class="d-title" x="228" y="66">Set window</text>
+          <text class="d-text" x="228" y="86">Start and end times</text>
+          <text class="d-text" x="228" y="102">for the audit query</text>
+          <rect class="d-box" x="412" y="42" width="176" height="88" rx="10"/>
+          <text class="d-title" x="424" y="66">Resolve the secret</text>
+          <text class="d-text" x="424" y="86">A: Key Vault reference</text>
+          <text class="d-text d-mono" x="424" y="102">B: poc_Audit_Secret</text>
+          <rect class="d-box" x="608" y="42" width="176" height="88" rx="10"/>
+          <text class="d-title" x="620" y="66">Log run start</text>
+          <text class="d-text" x="620" y="86">Writes a Flow Runs row</text>
+          <rect class="d-box" x="804" y="42" width="176" height="88" rx="10"/>
+          <text class="d-title" x="816" y="66">Create audit query</text>
+          <text class="d-text" x="816" y="86">Graph (beta) query for</text>
+          <text class="d-text d-mono" x="816" y="102">CopilotInteraction</text>
+          <text class="d-text" x="816" y="118">5 attempts, 20 s apart</text>
+          <path class="d-arrow" d="M196 86H214" marker-end="url(#arrow)"/>
+          <path class="d-arrow" d="M392 86H410" marker-end="url(#arrow)"/>
+          <path class="d-arrow" d="M588 86H606" marker-end="url(#arrow)"/>
+          <path class="d-arrow" d="M784 86H802" marker-end="url(#arrow)"/>
+          <path class="d-arrow" d="M892 130V166H160V212" marker-end="url(#arrow)"/>
+
+          <rect class="d-band" x="10" y="172" width="980" height="180" rx="12"/>
+          <text class="d-band-title" x="32" y="192">2 · COLLECT</text>
+          <rect class="d-box" x="20" y="214" width="176" height="86" rx="10"/>
+          <text class="d-title" x="32" y="240">Wait for query</text>
+          <text class="d-text" x="32" y="260">Poll status every 60 s</text>
+          <text class="d-text" x="32" y="276">until succeeded</text>
+          <rect class="d-loop" x="226" y="186" width="758" height="158" rx="12"/>
+          <text class="d-loop-label" x="246" y="206">Paging loop · scheduled: 100 pages or 10 h · manual: 1,000 pages or 10 h</text>
+          <rect class="d-box" x="246" y="216" width="200" height="84" rx="10"/>
+          <text class="d-title" x="258" y="238">Read a page</text>
+          <text class="d-text" x="258" y="256">$top=500, follow nextLink</text>
+          <text class="d-text" x="258" y="272">5 attempts, 30 s apart</text>
+          <rect class="d-box" x="505" y="216" width="200" height="84" rx="10"/>
+          <text class="d-title" x="517" y="238">Upsert each record</text>
+          <text class="d-text" x="517" y="256">Key = audit record id</text>
+          <text class="d-text" x="517" y="272">Writes Copilot Interactions</text>
+          <text class="d-text" x="517" y="288">Failed write → error row</text>
+          <rect class="d-box" x="764" y="216" width="200" height="84" rx="10"/>
+          <text class="d-title" x="776" y="238">Update run counts</text>
+          <text class="d-text" x="776" y="256">Writes Flow Runs:</text>
+          <text class="d-text" x="776" y="272">running counts, Finished</text>
+          <path class="d-arrow" d="M196 258H244" marker-end="url(#arrow)"/>
+          <path class="d-arrow" d="M446 258H503" marker-end="url(#arrow)"/>
+          <path class="d-arrow" d="M705 258H762" marker-end="url(#arrow)"/>
+          <path class="d-loop" d="M864 300V322H346V302" marker-end="url(#arrow)"/>
+          <text class="d-loop-label" x="605" y="338" text-anchor="middle">next page</text>
+
+          <rect class="d-band" x="10" y="364" width="980" height="150" rx="12"/>
+          <text class="d-band-title" x="32" y="384">3 · FINISH</text>
+          <path class="d-arrow" d="M320 344V398" marker-end="url(#arrow)"/>
+          <text class="d-label" x="330" y="388">last page or loop limit</text>
+          <polygon class="d-box" points="225,440 320,400 415,440 320,480"/>
+          <text class="d-title" x="320" y="437" text-anchor="middle">Collection</text>
+          <text class="d-title" x="320" y="453" text-anchor="middle">complete?</text>
+          <path class="d-arrow" d="M225 440H178" marker-end="url(#arrow)"/>
+          <text class="d-label" x="201" y="432" text-anchor="middle">yes</text>
+          <rect class="d-ok" x="36" y="418" width="140" height="44" rx="22"/>
+          <text class="d-title" x="106" y="445" text-anchor="middle">Run Succeeded</text>
+          <path class="d-arrow" d="M415 440H468" marker-end="url(#arrow)"/>
+          <text class="d-label" x="441" y="432" text-anchor="middle">no</text>
+          <rect class="d-box" x="470" y="410" width="190" height="60" rx="10"/>
+          <text class="d-title" x="565" y="434" text-anchor="middle">Write error row</text>
+          <text class="d-text" x="565" y="452" text-anchor="middle">to Flow Run Errors</text>
+          <path class="d-arrow" d="M660 440H708" marker-end="url(#arrow)"/>
+          <rect class="d-bad" x="710" y="410" width="190" height="60" rx="10"/>
+          <text class="d-title" x="805" y="434" text-anchor="middle">Run Failed</text>
+          <text class="d-text d-mono" x="805" y="452" text-anchor="middle">CollectionIncomplete</text>
+          <text class="d-text" x="470" y="496">Other failure codes: GetLogsFailed · KeyVaultSecretUnavailable (option A)</text>
+
+          <rect class="d-band" x="10" y="530" width="980" height="60" rx="12"/>
+          <text class="d-band-title" x="32" y="565">DATAVERSE</text>
+          <rect class="d-store" x="150" y="544" width="240" height="32" rx="8"/>
+          <text class="d-store-text" x="270" y="565" text-anchor="middle">Copilot Interactions</text>
+          <rect class="d-store" x="410" y="544" width="270" height="32" rx="8"/>
+          <text class="d-store-text" x="545" y="565" text-anchor="middle">Copilot Interaction Flow Runs</text>
+          <rect class="d-store" x="700" y="544" width="284" height="32" rx="8"/>
+          <text class="d-store-text" x="842" y="565" text-anchor="middle">Copilot Interaction Flow Run Errors</text>
+        </svg>
+      </div>
+
+      <ol class="steps">
+        <li><span class="step-title">Set the window</span>
+          <p>The scheduled flow runs once a day (time zone GMT Standard Time) and collects one UTC day, from <code>startOfDay(addDays(utcNow(), -4))</code> to <code>startOfDay(addDays(utcNow(), -3))</code>, so a run on 10 March collects 6 March. The lag allows for audit records that arrive late. The manual flow collects from StartDate to EndDate, and EndDate is <em>exclusive</em>. See <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#phase-a-initialise">Phase A</a>.</p>
+        </li>
+        <li><span class="step-title">Resolve the secret and open the run log</span>
+          <p>If <code>poc_Audit_UsingAKVtruefalse</code> is <code>true</code>, the flow reads the client secret from Azure Key Vault with the Dataverse unbound action <code>RetrieveEnvironmentVariableSecretValue</code>. Otherwise it uses the plain-text variable <code>poc_Audit_Secret</code>. The Key Vault action has secure inputs and outputs, and the Compose actions that pass the secret on have secure inputs, so the secret is <a href="https://learn.microsoft.com/azure/logic-apps/logic-apps-securing-a-logic-app#secure-data-in-run-history-by-using-obfuscation">hidden in run history</a>. The flow then adds a run log row with <strong>Flow State</strong> set to Running. See <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#phase-b-resolve-the-graph-secret">Phase B</a> and <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#phase-c-open-the-run-log">Phase C</a>.</p>
+        </li>
+        <li><span class="step-title">Create the query</span>
+          <p>An HTTP action sends <code>POST /beta/security/auditLog/queries</code> with the window, and with <code>recordTypeFilters</code> and <code>operationFilters</code> both set to <code>["CopilotInteraction"]</code> (<a href="https://learn.microsoft.com/graph/api/security-auditcoreroot-post-auditlogqueries?view=graph-rest-beta">create auditLogQuery</a>, <a href="https://learn.microsoft.com/graph/api/resources/security-auditlogquery?view=graph-rest-beta">auditLogQuery</a>). A retry loop makes up to 5 attempts within 5 minutes, 20 seconds apart. See <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#d1-create-the-audit-log-query">D1</a>.</p>
+        </li>
+        <li><span class="step-title">Wait for the query</span>
+          <p>Purview runs the search in the background. The flow checks the query's status every 60 seconds until it's <code>succeeded</code>. See <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#d2-wait-for-the-query-to-finish">D2</a>.</p>
+        </li>
+        <li><span class="step-title">Read the records</span>
+          <p>The flow reads the results up to 500 at a time (<a href="https://learn.microsoft.com/graph/api/security-auditlogquery-list-records?view=graph-rest-beta">list auditLogRecords</a>) and follows <code>@odata.nextLink</code> to the next page. Each page read gets up to 5 attempts within 10 minutes, 30 seconds apart. All three HTTP actions have secure inputs, which hide the secret, but their outputs aren't secured in the reference build, so run history shows the records (<a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#securing-run-history">Securing run history</a>). See <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#d3-fetch-a-page-of-records">D3</a>.</p>
+        </li>
+        <li><span class="step-title">Write each record</span>
+          <p>For every <a href="https://learn.microsoft.com/graph/api/resources/security-auditlogrecord?view=graph-rest-beta">audit log record</a>, <code>Get_a_row_by_ID</code> checks whether it's already stored (only so that new and existing records can be counted), then <code>Upsert_a_row_2</code> writes it with the row ID set to the audit record id, so re-running a window never creates duplicates. If an upsert fails, a <a href="https://learn.microsoft.com/azure/logic-apps/error-exception-handling#manage-the-run-after-behavior">run-after</a> branch adds a "Failed - Upsert a row 2" error row and adds 1 to <strong>Records Error</strong>; that record isn't saved. The flow moves to the next page only after every record on the page succeeds, so a failed page is read again, and a failure that persists ends in <code>CollectionIncomplete</code>. See <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#d4-upsert-each-record">D4</a>.</p>
+        </li>
+        <li><span class="step-title">Finish, or fail loudly</span>
+          <p>If the query never started or pages were left unread, the flow writes an error row and ends the run as <strong>Failed</strong> with <code>CollectionIncomplete</code>. An unhandled failure inside <code>Get_Logs</code> ends the run as <strong>Failed</strong> with <code>GetLogsFailed</code>. Otherwise the run ends <strong>Succeeded</strong>. See <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#phases-e-and-f-error-handling-and-completeness">Phases E and F</a>.</p>
+        </li>
+      </ol>
+
+      <h3 id="loop-limits">Loop limits</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th scope="col">Loop</th><th scope="col">Scheduled flow</th><th scope="col">Manual flow</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Create the query (<code>RetryLogic-StartAuditLogQuery</code>)</th><td>5 attempts or 5 minutes</td><td>Same</td></tr>
+            <tr><th scope="row">Wait for the query (<code>WaitUntilQueryFinished</code>)</th><td>480 checks or 8 hours</td><td>300 checks or 3 hours</td></tr>
+            <tr><th scope="row">Read pages (<code>ProcessAuditLogRecords</code>)</th><td>100 pages or 10 hours (about 50,000 records)</td><td>1,000 pages or 10 hours (about 500,000 records)</td></tr>
+            <tr><th scope="row">Retry a page (<code>RetryLogic-AuditLogRecords</code>)</th><td>5 attempts or 10 minutes</td><td>Same</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <ul>
+        <li><strong>A loop that reaches its limit ends Succeeded</strong>, and the flow carries on (tested with a mock flow; see <a href="https://learn.microsoft.com/azure/logic-apps/logic-apps-control-flow-loops#until-loop-considerations">Until loop considerations</a>). The completeness check catches a paging loop that stopped early, but not a wait loop that gave up before the query finished.</li>
+        <li><strong>Time usually runs out before pages do.</strong> Records are written one at a time, at about 25 to 60 a minute, so the 10-hour limit is reached at about 15,000 to 36,000 records, well before 100 pages.</li>
+        <li><strong>A run can be long.</strong> At the scheduled limits a run can take about 18 hours. A cloud flow run can last up to 30 days.</li>
+        <li><strong>The endpoint is beta.</strong> Graph beta APIs can change without notice.</li>
+      </ul>
+      <p>Details, and how to size the limits for your volumes: <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#loop-limits">Loop limits</a> and <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#planning-for-high-volumes">Planning for high volumes</a>.</p>
+      <div class="callout callout-warning" role="note">
+        <p class="callout-title"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 21h20L12 3z"/><path d="M12 10v5M12 18h.01"/></svg>Beta endpoint</p>
+        <p>The Graph endpoint is <strong>beta</strong>. Microsoft doesn't support beta APIs for production use, and they can change without notice. The reference build uses beta because the v1.0 record-type list doesn't include <code>CopilotInteraction</code>, so a v1.0 build would have to filter by operation only, and needs validating (<a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#switching-to-v10">Switching to v1.0</a>). Watch run history for unexpected failures.</p>
+      </div>
+    </section>
+
+    <section class="section" id="gallery" aria-labelledby="gallery-h">
+      <p class="section-kicker">Reference build</p>
+      <h2 id="gallery-h">Inside the flow</h2>
+      <p>Screenshots of the scheduled flow in the reference build, from top to bottom. Select an image to enlarge it. Each caption links to the part of the <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md">action reference</a> that explains every action in it and why it exists. Names and values are from a demo environment.</p>
+      <div class="grid-2">
+        <figure class="shot shot-overview">
+          <a href="images/flow-01-overview.png" data-lightbox><img src="images/flow-01-overview.png" width="560" height="775" loading="lazy" alt="Top level of the scheduled flow in the designer: EnvVarTextCheck, Check AKV Secret, Resolve Graph Secret, Capture Flow Run Details, Get Logs, then Error Handling and Check Collection Complete side by side"></a>
+          <figcaption>Top level of the scheduled flow (variables collapsed). Reference build in the designer; includes legacy actions inherited from the CoE Starter Kit pattern that a clean build can omit.</figcaption>
+        </figure>
+        <div class="card">
+          <h3>Reading the top level</h3>
+          <ol class="phase-list">
+            <li><span class="badge">A</span> <strong>Trigger and variables</strong> (collapsed) set the collection window, counters and flags. 23 actions.</li>
+            <li><span class="badge">B</span> <code>EnvVarTextCheck</code>, <code>Check_AKV_Secret</code> and <code>Resolve_Graph_Secret</code> read the app secret from Key Vault or from a plain-text environment variable. 8 actions.</li>
+            <li><span class="badge">C</span> <code>Capture_Flow_Run_Details</code> writes a Running row to Copilot Interaction Flow Runs. 2 actions.</li>
+            <li><span class="badge">D1–D4</span> <code>Get_Logs</code> creates the Graph query, waits for it, reads each page and upserts every record. 46 actions.</li>
+            <li><span class="badge">E</span> <code>Error_Handling</code> ends the run as Failed if <code>Get_Logs</code> failed. 3 actions.</li>
+            <li><span class="badge">F</span> <code>Check_Collection_Complete</code> ends the run as Failed if data is missing or partial. 3 actions.</li>
+          </ol>
+          <p class="small muted">85 actions in total. The <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#phase-map">phase map</a> lists them, and the <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#control-flow">control-flow</a> and <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#sequence">sequence</a> diagrams show how they connect.</p>
+        </div>
+      </div>
+      <h3 id="gallery-phases">Every part, in order</h3>
+      <ul class="gallery">
+        <li><figure class="shot"><a href="images/flow-02-variables.png" data-lightbox><img src="images/flow-02-variables.png" width="774" height="722" loading="lazy" alt="Trigger, legacy Compose actions and variable initialisers"></a>
+          <figcaption><span class="badge">A</span> <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#phase-a-initialise">Initialise</a>: the window, counters and flags.</figcaption></figure></li>
+        <li><figure class="shot"><a href="images/flow-03-secret-and-runlog.png" data-lightbox><img src="images/flow-03-secret-and-runlog.png" width="560" height="990" loading="lazy" alt="Secret resolution and the run log"></a>
+          <figcaption><span class="badge">B and C</span> <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#phase-b-resolve-the-graph-secret">Secret</a> and <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#phase-c-open-the-run-log">run log</a>: Key Vault or plain text, then a Running row.</figcaption></figure></li>
+        <li><figure class="shot"><a href="images/flow-04-create-query.png" data-lightbox><img src="images/flow-04-create-query.png" width="1180" height="1040" loading="lazy" alt="The retry loop around the AuditLogQuery HTTP action"></a>
+          <figcaption><span class="badge">D1</span> <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#d1-create-the-audit-log-query">Create the query</a>, with retries.</figcaption></figure></li>
+        <li><figure class="shot"><a href="images/panel-create-query.png" data-lightbox><img src="images/panel-create-query.png" width="640" height="1412" loading="lazy" alt="Parameters of the AuditLogQuery HTTP action"></a>
+          <figcaption><span class="badge">D1</span> <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#http-authentication">The HTTP request</a>: method, URI, body and authentication.</figcaption></figure></li>
+        <li><figure class="shot"><a href="images/flow-05-poll-query.png" data-lightbox><img src="images/flow-05-poll-query.png" width="565" height="1000" loading="lazy" alt="The WaitUntilQueryFinished polling loop"></a>
+          <figcaption><span class="badge">D2</span> <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#d2-wait-for-the-query-to-finish">Wait for the query</a>: a status check every 60 seconds.</figcaption></figure></li>
+        <li><figure class="shot"><a href="images/flow-06-fetch-page.png" data-lightbox><img src="images/flow-06-fetch-page.png" width="845" height="890" loading="lazy" alt="The paging loop and its retry loop"></a>
+          <figcaption><span class="badge">D3</span> <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#d3-fetch-a-page-of-records">Fetch a page</a> of up to 500 records, with retries.</figcaption></figure></li>
+        <li><figure class="shot"><a href="images/flow-07-per-record-upsert.png" data-lightbox><img src="images/flow-07-per-record-upsert.png" width="770" height="1700" loading="lazy" alt="Processing a page: parse, upsert each record, set the next-page URL"></a>
+          <figcaption><span class="badge">D4</span> <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#d4-upsert-each-record">Upsert each record</a>, then move to the next page.</figcaption></figure></li>
+        <li><figure class="shot"><a href="images/panel-upsert-mapping.png" data-lightbox><img src="images/panel-upsert-mapping.png" width="640" height="1862" loading="lazy" alt="Parameters of Upsert a row 2"></a>
+          <figcaption><span class="badge">D4</span> <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#upsert-mapping">Column mapping</a>: audit record fields to Dataverse columns.</figcaption></figure></li>
+        <li><figure class="shot"><a href="images/flow-08-error-and-completeness.png" data-lightbox><img src="images/flow-08-error-and-completeness.png" width="800" height="472" loading="lazy" alt="Error handling beside the completeness check"></a>
+          <figcaption><span class="badge">E and F</span> <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#phases-e-and-f-error-handling-and-completeness">Error handling and completeness</a>: fail loudly.</figcaption></figure></li>
+      </ul>
+      <dialog id="lightbox" aria-labelledby="lightbox-cap">
+        <div class="lightbox-bar">
+          <p id="lightbox-cap" class="small"></p>
+          <form method="dialog"><button class="btn btn-sm" type="submit">Close</button></form>
+        </div>
+        <img id="lightbox-img" alt="">
+      </dialog>
+    </section>
+
+    <section class="section" id="checklist" aria-labelledby="checklist-h">
+      <p class="section-kicker">Governance</p>
+      <h2 id="checklist-h">Approval checklist (before you build)</h2>
+      <p>Agree each of these with the right owner before you build in, or deploy to, any environment that holds real data. Tick each item as it's agreed and record the owner or evidence. <span data-jsonly hidden>Your answers are saved in this browser only (local storage) and are never sent anywhere. Use <strong>Copy as Markdown</strong> to paste the list into a change request.</span></p>
+      <p class="no-js-only small muted">Scripts are off, so ticks and owners aren't saved or copied. Print this page or use the checklist in the README instead.</p>
+      <div class="toolbar" data-jsonly hidden>
+        <div class="progress" role="progressbar" aria-label="Checklist progress" aria-valuemin="0" aria-valuemax="14" aria-valuenow="0"><div class="progress-bar" id="checklist-bar"></div></div>
+        <span id="checklist-count" class="small">0 of 14 agreed</span>
+        <button type="button" class="btn btn-sm" id="checklist-copy">Copy as Markdown</button>
+        <button type="button" class="btn btn-sm" id="checklist-reset">Reset</button>
+      </div>
+      <ul class="checklist" id="checklist-list">
+        <li><input type="checkbox" id="chk-privacy"><label for="chk-privacy"><strong>Privacy:</strong> a DPIA or privacy review covers UPNs, IP addresses, regions and accessed-resource names for every Copilot user.</label><div class="owner"><label class="visually-hidden" for="own-privacy">Owner or evidence: Privacy</label><input type="text" id="own-privacy" placeholder="Owner / evidence"></div></li>
+        <li><input type="checkbox" id="chk-security"><label for="chk-security"><strong>Security:</strong> someone has approved an app registration with tenant-wide <code>AuditLogsQuery.Read.All</code>.</label><div class="owner"><label class="visually-hidden" for="own-security">Owner or evidence: Security</label><input type="text" id="own-security" placeholder="Owner / evidence"></div></li>
+        <li><input type="checkbox" id="chk-consent"><label for="chk-consent"><strong>Consent:</strong> a Privileged Role Administrator or Global Administrator is available to grant admin consent (<a href="https://learn.microsoft.com/entra/identity/enterprise-apps/grant-admin-consent">grant admin consent</a>, <a href="https://learn.microsoft.com/entra/identity/role-based-access-control/permissions-reference">role reference</a>).</label><div class="owner"><label class="visually-hidden" for="own-consent">Owner or evidence: Consent</label><input type="text" id="own-consent" placeholder="Owner / evidence"></div></li>
+        <li><input type="checkbox" id="chk-secret"><label for="chk-secret"><strong>Secret handling:</strong> an option from <a href="#secrets">the secret-handling decision</a> is agreed with security. Key Vault is recommended.</label><div class="owner"><label class="visually-hidden" for="own-secret">Owner or evidence: Secret handling</label><input type="text" id="own-secret" placeholder="Owner / evidence"></div></li>
+        <li><input type="checkbox" id="chk-credential"><label for="chk-credential"><strong>Credential lifecycle:</strong> there's a named owner, an expiry date and a rotation process (<a href="https://learn.microsoft.com/entra/identity-platform/how-to-add-credentials">add credentials</a>).</label><div class="owner"><label class="visually-hidden" for="own-credential">Owner or evidence: Credential lifecycle</label><input type="text" id="own-credential" placeholder="Owner / evidence"></div></li>
+        <li><input type="checkbox" id="chk-workload"><label for="chk-workload"><strong>Workload identity controls:</strong> the app's sign-ins are monitored (<a href="https://learn.microsoft.com/entra/identity/monitoring-health/concept-sign-ins">sign-in logs</a>), and Conditional Access for workload identities is considered (<a href="https://learn.microsoft.com/entra/identity/conditional-access/workload-identity">workload identities</a>).</label><div class="owner"><label class="visually-hidden" for="own-workload">Owner or evidence: Workload identity controls</label><input type="text" id="own-workload" placeholder="Owner / evidence"></div></li>
+        <li><input type="checkbox" id="chk-environment"><label for="chk-environment"><strong>Environment:</strong> a dedicated Dataverse environment with restricted membership is chosen (<a href="https://learn.microsoft.com/power-platform/admin/environments-overview">environments</a>, <a href="https://learn.microsoft.com/power-platform/admin/database-security">database security</a>).</label><div class="owner"><label class="visually-hidden" for="own-environment">Owner or evidence: Environment</label><input type="text" id="own-environment" placeholder="Owner / evidence"></div></li>
+        <li><input type="checkbox" id="chk-data-access"><label for="chk-data-access"><strong>Data access:</strong> report readers get a custom read-only security role for the three tables (<a href="https://learn.microsoft.com/power-platform/admin/security-roles-privileges">security roles</a>). This guide includes no role.</label><div class="owner"><label class="visually-hidden" for="own-data-access">Owner or evidence: Data access</label><input type="text" id="own-data-access" placeholder="Owner / evidence"></div></li>
+        <li><input type="checkbox" id="chk-retention"><label for="chk-retention"><strong>Retention:</strong> a retention period is agreed and a bulk-delete job is planned (<a href="https://learn.microsoft.com/power-platform/admin/delete-bulk-records">bulk delete</a>).</label><div class="owner"><label class="visually-hidden" for="own-retention">Owner or evidence: Retention</label><input type="text" id="own-retention" placeholder="Owner / evidence"></div></li>
+        <li><input type="checkbox" id="chk-licensing"><label for="chk-licensing"><strong>Licensing and request limits:</strong> the flow owner has a premium Power Automate licence, because the flows use the premium HTTP and Dataverse connectors (<a href="https://learn.microsoft.com/power-platform/admin/power-automate-licensing/types">licence types</a>, <a href="https://learn.microsoft.com/power-platform/admin/power-automate-licensing/faqs">FAQ</a>). For a busy tenant, the expected daily volume is checked against the <a href="https://learn.microsoft.com/power-platform/admin/api-request-limits-allocations#request-limits-in-power-automate">Power Platform request limits</a>, and a Process licence for the scheduled flow is considered (see <a href="#limitations">Limitations</a>).</label><div class="owner"><label class="visually-hidden" for="own-licensing">Owner or evidence: Licensing and request limits</label><input type="text" id="own-licensing" placeholder="Owner / evidence"></div></li>
+        <li><input type="checkbox" id="chk-dlp"><label for="chk-dlp"><strong>DLP:</strong> the environment's data policy allows the HTTP and Microsoft Dataverse connectors to be used together (<a href="https://learn.microsoft.com/power-platform/admin/wp-data-loss-prevention">data policies</a>).</label><div class="owner"><label class="visually-hidden" for="own-dlp">Owner or evidence: DLP</label><input type="text" id="own-dlp" placeholder="Owner / evidence"></div></li>
+        <li><input type="checkbox" id="chk-capacity"><label for="chk-capacity"><strong>Capacity:</strong> Dataverse database capacity is checked (<a href="https://learn.microsoft.com/power-platform/admin/capacity-storage">capacity</a>).</label><div class="owner"><label class="visually-hidden" for="own-capacity">Owner or evidence: Capacity</label><input type="text" id="own-capacity" placeholder="Owner / evidence"></div></li>
+        <li><input type="checkbox" id="chk-operations"><label for="chk-operations"><strong>Operations owner:</strong> someone watches for failed runs and backfills gaps (see <a href="#operations">Operations</a>).</label><div class="owner"><label class="visually-hidden" for="own-operations">Owner or evidence: Operations owner</label><input type="text" id="own-operations" placeholder="Owner / evidence"></div></li>
+        <li><input type="checkbox" id="chk-testing"><label for="chk-testing"><strong>Testing:</strong> the build is tested in a non-production environment first, using the <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#clean-build-checklist">clean-build checklist</a>.</label><div class="owner"><label class="visually-hidden" for="own-testing">Owner or evidence: Testing</label><input type="text" id="own-testing" placeholder="Owner / evidence"></div></li>
+      </ul>
+    </section>
+
+    <section class="section" id="prereqs" aria-labelledby="prereqs-h">
+      <p class="section-kicker">Before you build</p>
+      <h2 id="prereqs-h">Prerequisites and permissions</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th scope="col">Area</th><th scope="col">Requirement</th><th scope="col">Why</th></tr></thead>
+          <tbody>
+            <tr><td class="nowrap">Microsoft 365</td><td>Unified audit logging turned on (<a href="https://learn.microsoft.com/purview/audit-log-enable-disable">turn auditing on or off</a>, <a href="https://learn.microsoft.com/purview/audit-standard-setup">set up Audit (Standard)</a>)</td><td>Copilot interactions are logged as part of Audit (Standard).</td></tr>
+            <tr><td class="nowrap">Microsoft 365</td><td>Global (commercial) cloud</td><td>The audit log query API isn't available in the US Government L4/L5 (DoD) or 21Vianet clouds.</td></tr>
+            <tr><td class="nowrap">Entra ID</td><td>An app registration in your tenant (<a href="https://learn.microsoft.com/entra/identity-platform/quickstart-register-app">register an app</a>)</td><td>The identity the flows sign in as.</td></tr>
+            <tr><td class="nowrap">Entra ID</td><td>Microsoft Graph <strong>application</strong> permission <code>AuditLogsQuery.Read.All</code>, with admin consent</td><td>Required by the audit log query API.</td></tr>
+            <tr><td class="nowrap">Entra ID</td><td>Privileged Role Administrator or Global Administrator, to grant consent</td><td>Consent to Microsoft Graph application permissions needs one of these roles.</td></tr>
+            <tr><td class="nowrap">Entra ID</td><td>A client secret on the app registration</td><td>Used by the HTTP actions. For certificates, see <a href="#option-c">option C</a>.</td></tr>
+            <tr><td class="nowrap">Power Platform</td><td>An environment with Dataverse</td><td>Holds the solution, tables and flows.</td></tr>
+            <tr><td class="nowrap">Power Platform</td><td>The builder is a System Administrator or System Customizer in that environment</td><td>Needed to create the tables, environment variables, connection reference and flows.</td></tr>
+            <tr><td class="nowrap">Power Platform</td><td>A Microsoft Dataverse connection, owned by the flow owner</td><td>Used by the build's Dataverse connection reference (<a href="https://learn.microsoft.com/power-apps/maker/data-platform/create-connection-reference">connection references</a>).</td></tr>
+            <tr><td class="nowrap">Power Platform</td><td>A premium Power Automate licence for the flow owner; for a busy tenant, consider a Process licence for the scheduled flow</td><td>The HTTP and Dataverse connectors are premium. Each record costs several Power Platform requests, so a busy tenant can exceed a user licence's daily request limit; see <a href="#limitations">Limitations</a>.</td></tr>
+            <tr><td class="nowrap">Power Platform</td><td>A data policy that allows HTTP and Dataverse together</td><td>Otherwise the flows are suspended.</td></tr>
+            <tr><td class="nowrap">Azure (option A only)</td><td>A Key Vault, the <code>Microsoft.PowerPlatform</code> resource provider, and RBAC role assignments</td><td>See <a href="#option-a">option A</a>.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section" id="secrets" aria-labelledby="secrets-h">
+      <p class="section-kicker">Decide first</p>
+      <h2 id="secrets-h">Secret-handling decision: how the client secret is stored</h2>
+      <div class="callout callout-info" role="note">
+        <p class="callout-title"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5h.01"/></svg>Choose before you build</p>
+        <p>The flows authenticate to Microsoft Graph with the app registration's credential, and where that credential lives is your decision, agreed with your security team. Nothing in this guide is pre-filled: you create every environment variable and enter every value yourself. The flows choose where to read the secret from using <code>poc_Audit_UsingAKVtruefalse</code>.</p>
+      </div>
+      <p class="no-js-only small muted">Scripts are off: all three options are shown below.</p>
+      <fieldset class="choice-grid" data-jsonly hidden>
+        <legend>Choose how the client secret will be stored</legend>
+        <label class="choice" for="opt-a"><input type="radio" name="secret-option" id="opt-a" value="A"><span class="choice-name">A: Azure Key Vault <span class="badge badge-success">Recommended</span></span><span class="choice-desc">Dataverse holds only a reference to a Key Vault secret. The secret is never exported with the solution.</span></label>
+        <label class="choice" for="opt-b"><input type="radio" name="secret-option" id="opt-b" value="B"><span class="choice-name">B: Plain-text variable <span class="badge badge-warning">Dev/test only</span></span><span class="choice-desc">Quick to set up, but the secret sits in clear text in Dataverse and can be exported with the solution.</span></label>
+        <label class="choice" for="opt-c"><input type="radio" name="secret-option" id="opt-c" value="C"><span class="choice-name">C: Certificate <span class="badge">Advanced</span></span><span class="choice-desc">You set the HTTP actions' credential type to Certificate when you build them, and store the PFX and password yourself.</span></label>
+      </fieldset>
+
+      <div class="option-panel" id="option-a" data-option-panel="A">
+        <h3>Option A — Azure Key Vault (recommended)</h3>
+        <dl>
+          <dt>Where the secret lives</dt><dd>A Key Vault secret. Dataverse holds only a <em>reference</em> to it.</dd>
+          <dt>Who can read it</dt><dd>Identities with <strong>Key Vault Secrets User</strong> on the vault, and Dataverse when a flow asks for it.</dd>
+          <dt>Exported with the solution?</dt><dd>Only the reference, never the secret.</dd>
+          <dt>Rotation</dt><dd>Update the secret in Key Vault, then save the flows or turn them off and on.</dd>
+          <dt>Effort</dt><dd>Medium: Azure subscription, vault, RBAC and networking.</dd>
+          <dt>Settings</dt><dd><code>poc_Audit_UsingAKVtruefalse</code> = <code>true</code>; <code>poc_KeyVaultSecret</code> set; <code>poc_Audit_Secret</code> empty.</dd>
+          <dt>Suits</dt><dd>Production.</dd>
+        </dl>
+        <p>Follow Microsoft's <a href="https://learn.microsoft.com/power-apps/maker/data-platform/environmentvariables-azure-key-vault-secrets">Use Azure Key Vault secrets</a> guidance. In summary:</p>
+        <ol>
+          <li>Register the <code>Microsoft.PowerPlatform</code> resource provider in the Azure subscription that holds the vault.</li>
+          <li>Use a vault in the <strong>same tenant</strong> as Power Platform, with the <a href="https://learn.microsoft.com/azure/key-vault/general/rbac-guide">Azure RBAC permission model</a>. Microsoft suggests a separate vault for each environment.</li>
+          <li>Add a secret that holds the client secret's <strong>Value</strong> (not its Secret ID).</li>
+          <li>Assign the <strong>Key Vault Secrets User</strong> role to:
+            <ul>
+              <li>the user who will create the environment variable;</li>
+              <li>the Dataverse service principal, application ID <code>00000007-0000-0000-c000-000000000000</code>. Remove any Dataverse role assignment with a different application ID.</li>
+            </ul>
+          </li>
+          <li>If the vault's firewall is on, remember that Power Platform isn't covered by the "Trusted Services Only" option. Allow the <a href="https://learn.microsoft.com/power-platform/admin/online-requirements#ip-addresses-required">Power Platform IP addresses</a>, or use <a href="https://learn.microsoft.com/power-platform/admin/vnet-support-overview">virtual network support</a>.</li>
+          <li>Create <code>poc_KeyVaultSecret</code> as a <strong>Secret</strong> environment variable. Power Apps asks for the subscription ID, resource group name, vault name and secret name, and builds the reference:
+            <div class="code-box"><code id="kv-ref">/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.KeyVault/vaults/{keyVaultName}/secrets/{secretName}</code><button type="button" class="btn btn-sm copy-btn" data-copy-target="kv-ref" data-jsonly hidden>Copy</button></div>
+          </li>
+          <li>Set <code>poc_Audit_UsingAKVtruefalse</code> to <code>true</code>, and leave <code>poc_Audit_Secret</code> empty.</li>
+        </ol>
+        <p><strong>How the flow reads it.</strong> Secret environment variables aren't available in the dynamic content selector, so the flow calls the Dataverse unbound action <code>RetrieveEnvironmentVariableSecretValue</code> with the variable's schema name and reads <code>outputs('Perform_an_unbound_action')?['body/EnvironmentVariableSecretValue']</code>. The action has secure inputs and outputs. If it fails, the flow writes an error row (no run log row exists yet) and ends the run as <strong>Failed</strong> with <code>KeyVaultSecretUnavailable</code>, before any Graph call is made. Secret environment variables work only with Power Automate flows, Copilot Studio agents and custom connectors. See <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#phase-b-resolve-the-graph-secret">Phase B</a>.</p>
+      </div>
+
+      <div class="option-panel" id="option-b" data-option-panel="B">
+        <h3>Option B — Plain-text environment variable (dev/test only)</h3>
+        <dl>
+          <dt>Where the secret lives</dt><dd>A Text environment variable value in Dataverse.</dd>
+          <dt>Who can read it</dt><dd>Anyone who can read environment variable values in the environment.</dd>
+          <dt>Exported with the solution?</dt><dd><strong>Yes, in clear text</strong>, if a current value is in the solution. Remove it before export.</dd>
+          <dt>Rotation</dt><dd>Update the value, then save the flows or turn them off and on.</dd>
+          <dt>Effort</dt><dd>Low.</dd>
+          <dt>Settings</dt><dd><code>poc_Audit_UsingAKVtruefalse</code> = <code>false</code>; <code>poc_Audit_Secret</code> set.</dd>
+          <dt>Suits</dt><dd>Development and test only, with a short-lived secret.</dd>
+        </dl>
+        <ol>
+          <li>Set <code>poc_Audit_UsingAKVtruefalse</code> to <code>false</code>.</li>
+          <li>Enter the client secret's <strong>Value</strong>, not its Secret ID, as the <strong>Current value</strong> of <code>poc_Audit_Secret</code>. Leave its <strong>Default value</strong> empty, because the default is part of the variable's definition and is always exported.</li>
+          <li>Use a short-lived secret, and keep this option to development and test environments.</li>
+          <li>Before you export the solution, open the variable and, under <strong>Current Value</strong>, select <strong>...</strong> &gt; <strong>Remove from this solution</strong>.</li>
+        </ol>
+        <p>See <a href="https://learn.microsoft.com/power-apps/maker/data-platform/environmentvariables">Environment variables overview</a> and <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#storing-the-client-secret">Storing the client secret</a>.</p>
+      </div>
+
+      <div class="option-panel" id="option-c" data-option-panel="C">
+        <h3>Option C — Certificate (advanced)</h3>
+        <dl>
+          <dt>Where the secret lives</dt><dd>A certificate (PFX) and its password, ideally in Key Vault.</dd>
+          <dt>Who can read it</dt><dd>As option A or B, depending on where you store the PFX and password.</dd>
+          <dt>Exported with the solution?</dt><dd>As option A or B.</dd>
+          <dt>Rotation</dt><dd>Upload a new certificate, then update the stored PFX and password.</dd>
+          <dt>Effort</dt><dd>High: in both flows, set <strong>Credential Type</strong> to Certificate on <code>AuditLogQuery</code>, <code>AuditLogQueryStatus</code> and <code>AuditLogRecords</code>. The reference build was tested with a client secret only.</dd>
+          <dt>Settings</dt><dd>Your own variables for the PFX and password.</dd>
+          <dt>Suits</dt><dd>Production, where policy requires certificates.</dd>
+        </dl>
+        <p>Microsoft recommends a certificate rather than a client secret in production. Upload the certificate's public key to the app registration (<a href="https://learn.microsoft.com/entra/identity-platform/certificate-credentials">certificate credentials</a>). Then, in both flows, set <strong>Credential Type</strong> to Certificate on the three HTTP actions, and supply <strong>Pfx</strong> (the base64 content of the PFX file) and <strong>Password</strong>. Store both as you would a client secret, ideally in Key Vault, and pass them through a Compose action with secure inputs, as <code>Resolve_Graph_Secret</code> does. The reference build hasn't been tested with a certificate, so validate the change with the manual flow before you rely on it. See <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#http-authentication">HTTP authentication</a>.</p>
+      </div>
+
+      <details>
+        <summary>Compare all three options side by side</summary>
+        <div class="details-body">
+          <div class="table-wrap">
+            <table class="wrap-head">
+              <thead><tr><th scope="col"><span class="visually-hidden">Aspect</span></th><th scope="col">A: Azure Key Vault (recommended)</th><th scope="col">B: Plain-text environment variable (dev/test only)</th><th scope="col">C: Certificate (advanced)</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">Where the secret lives</th><td>A Key Vault secret. Dataverse holds only a reference to it.</td><td>A Text environment variable value in Dataverse</td><td>A certificate (PFX) and its password, ideally in Key Vault</td></tr>
+                <tr><th scope="row">Who can read it</th><td>Identities with <strong>Key Vault Secrets User</strong> on the vault, and Dataverse when a flow asks for it</td><td>Anyone who can read environment variable values in the environment</td><td>As option A or B, depending on where you store the PFX and password</td></tr>
+                <tr><th scope="row">Exported with the solution?</th><td>Only the reference, never the secret</td><td><strong>Yes, in clear text</strong>, if a current value is in the solution. Remove it before export.</td><td>As option A or B</td></tr>
+                <tr><th scope="row">Rotation</th><td>Update the secret in Key Vault, then save the flows or turn them off and on</td><td>Update the value, then save the flows or turn them off and on</td><td>Upload a new certificate, then update the stored PFX and password</td></tr>
+                <tr><th scope="row">Effort</th><td>Medium: Azure subscription, vault, RBAC and networking</td><td>Low</td><td>High: in both flows, set <strong>Credential Type</strong> to Certificate on the three HTTP actions. Tested with a client secret only.</td></tr>
+                <tr><th scope="row">Settings</th><td><code>poc_Audit_UsingAKVtruefalse</code> = <code>true</code>; <code>poc_KeyVaultSecret</code> set; <code>poc_Audit_Secret</code> empty</td><td><code>poc_Audit_UsingAKVtruefalse</code> = <code>false</code>; <code>poc_Audit_Secret</code> set</td><td>Your own variables for the PFX and password</td></tr>
+                <tr><th scope="row">Suits</th><td>Production</td><td>Development and test only, with a short-lived secret</td><td>Production, where policy requires certificates</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </details>
+
+      <div class="callout callout-danger" role="note">
+        <p class="callout-title"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 21h20L12 3z"/><path d="M12 10v5M12 18h.01"/></svg>Caution: the switch is an exact text match</p>
+        <p>In the reference build, only <code>true</code> (lower case, no spaces) is guaranteed to select Key Vault. A value such as <code>yes</code>, or <code>true</code> with a trailing space, silently selects the plain-text secret instead. If that's empty, sign-in fails with <code>AADSTS7000215</code> and nothing points to the switch. In your build, normalise the value with <code>toLower(trim(...))</code> or use a Two options variable.</p>
+      </div>
+      <p class="small muted">Client secrets last 24 months at most, and Microsoft recommends less than 12. The value is shown only once, when you create it. When a secret expires, the Graph calls fail and the run log shows the query never started; see <a href="#troubleshooting">Troubleshooting</a> and <a href="#rotate-secret">Rotating the secret</a>.</p>
+    </section>
+
+    <section class="section" id="env-vars" aria-labelledby="env-vars-h">
+      <p class="section-kicker">Configuration</p>
+      <h2 id="env-vars-h">Environment variables</h2>
+      <p>The flows read their settings from Dataverse <a href="https://learn.microsoft.com/power-apps/maker/data-platform/environmentvariables">environment variables</a>, so the same flows work in every environment. <code>poc</code> is the reference build's publisher prefix; yours will be your own publisher's prefix. In code view, a flow refers to a variable by display name and schema name, for example <code>parameters('Audit_Tenant (poc_Audit_Tenant)')</code>. Create these:</p>
+      <p class="small muted" data-jsonly hidden>The last column and the highlighted rows follow the option chosen in <a href="#secrets">the secret-handling decision</a>.</p>
+      <div class="table-wrap">
+        <table id="env-table">
+          <thead><tr><th scope="col">Schema name (display name)</th><th scope="col">Type</th><th scope="col">Default value</th><th scope="col">Purpose</th><th scope="col">Clean build</th><th scope="col" id="env-col-head">With option A</th></tr></thead>
+          <tbody>
+            <tr data-var="tenant" class="is-relevant"><td><code>poc_Audit_Tenant</code><br><span class="small muted">Audit_Tenant</span></td><td>Text</td><td>(none)</td><td>Your tenant ID, for the HTTP actions' <strong>Tenant</strong></td><td><strong>Keep</strong></td><td data-col>Set</td></tr>
+            <tr data-var="appreg" class="is-relevant"><td><code>poc_Audit_AppRegID</code><br><span class="small muted">Audit_AppRegID</span></td><td>Text</td><td>(none)</td><td>The app registration's client ID</td><td><strong>Keep</strong></td><td data-col>Set</td></tr>
+            <tr data-var="flag" class="is-relevant"><td><code>poc_Audit_UsingAKVtruefalse</code><br><span class="small muted">Audit_UsingAKVtruefalse</span></td><td>Text</td><td><code>false</code></td><td>The secret-storage switch. Only <code>true</code> selects Key Vault.</td><td><strong>Change.</strong> Normalise the value, or use Two options.</td><td data-col>Set to <code>true</code></td></tr>
+            <tr data-var="kvsecret" class="is-relevant"><td><code>poc_KeyVaultSecret</code><br><span class="small muted">KeyVaultSecret</span></td><td>Secret</td><td>(none)</td><td>Option A: the Key Vault reference (see <a href="#option-a">option A</a>)</td><td><strong>Keep</strong> for option A</td><td data-col>Set: the Key Vault reference</td></tr>
+            <tr data-var="secret"><td><code>poc_Audit_Secret</code><br><span class="small muted">Audit_Secret</span></td><td>Text</td><td>(none)</td><td>Option B: the client secret value. Stored in clear text.</td><td><strong>Keep</strong> for option B only</td><td data-col>Leave empty (or omit in a clean build)</td></tr>
+            <tr data-var="authority"><td><code>poc_Audit_Authority</code><br><span class="small muted">Audit_Authority</span></td><td>Text</td><td><code>https://login.windows.net</code></td><td>The sign-in authority</td><td><strong>Keep</strong></td><td data-col>Keep the default</td></tr>
+            <tr data-var="audience"><td><code>poc_Audit_Audience</code><br><span class="small muted">Audit_Audience</span></td><td>Text</td><td><code>https://graph.microsoft.com</code></td><td>The token audience</td><td><strong>Keep</strong></td><td data-col>Keep the default</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Don't create the three legacy variables in the reference build: <code>poc_Audit_ReviewerEmail</code> (unused), <code>poc_AuditMinutestoLookBack</code> (Decimal number, 65) and <code>poc_AuditEndTimeMinutesAgo</code> (Decimal number, 2820). Only legacy Compose actions read the last two.</p>
+      <div class="callout callout-info" role="note">
+        <p class="callout-title"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5h.01"/></svg>Changing a value</p>
+        <p>Flows keep using the previous value until they're saved, or turned off and on again. After any change, save both flows and run the manual flow over a short window. See <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#changing-a-value">Changing a value</a> and <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#environment-variables">Environment variables</a> in the action reference.</p>
+      </div>
+    </section>
+
+    <section class="section" id="build" aria-labelledby="build-h">
+      <p class="section-kicker">Step by step</p>
+      <h2 id="build-h">Build steps</h2>
+      <p>Build in a development environment first, after you've worked through the <a href="#checklist">approval checklist</a> and chosen a <a href="#secrets">secret option</a>. Each step links the detail you need. <span data-jsonly hidden>Tick each step as you finish it; progress is saved in this browser only.</span></p>
+      <div class="toolbar" data-jsonly hidden>
+        <div class="progress" role="progressbar" aria-label="Build progress" aria-valuemin="0" aria-valuemax="10" aria-valuenow="0"><div class="progress-bar" id="build-bar"></div></div>
+        <span id="build-count" class="small">0 of 10 done</span>
+        <button type="button" class="btn btn-sm" id="build-reset">Reset</button>
+      </div>
+      <ol class="stepper" id="build-steps">
+        <li><div class="card">
+          <div class="step-head"><h3>Register the app</h3><label class="step-done" data-jsonly hidden><input type="checkbox" data-step="1">Done<span class="visually-hidden">: register the app</span></label></div>
+          <ol>
+            <li>In the Entra admin center, go to <strong>App registrations</strong> &gt; <strong>New registration</strong>. Choose a single-tenant registration.</li>
+            <li>Go to <strong>API permissions</strong> &gt; <strong>Add a permission</strong> &gt; <strong>Microsoft Graph</strong> &gt; <strong>Application permissions</strong>, and add <code>AuditLogsQuery.Read.All</code>. <code>AuditLog.Read.All</code> isn't enough.</li>
+            <li>Select <strong>Grant admin consent</strong>. This needs a Privileged Role Administrator or Global Administrator.</li>
+            <li>Go to <strong>Certificates &amp; secrets</strong> &gt; <strong>New client secret</strong>. Choose an expiry of less than 12 months (24 months at most), and copy the <strong>Value</strong> straight away: it's shown only once. Record the expiry date and an owner for rotation.</li>
+          </ol>
+          <p>A certificate is preferred in production. See <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#graph-permissions">Graph permissions</a>.</p>
+        </div></li>
+        <li><div class="card">
+          <div class="step-head"><h3>Store the secret</h3><label class="step-done" data-jsonly hidden><input type="checkbox" data-step="2">Done<span class="visually-hidden">: store the secret</span></label></div>
+          <p>Store it using the option you chose in <a href="#secrets">the secret-handling decision</a>.</p>
+          <p data-step3="A"><strong>Option A:</strong> add the secret value to Key Vault, grant <em>Key Vault Secrets User</em> to yourself and the Dataverse service principal, and keep the vault details ready for when you create <code>poc_KeyVaultSecret</code> in step 5 (see <a href="#option-a">option A</a>).</p>
+          <p data-step3="B"><strong>Option B:</strong> keep the secret <strong>value</strong> ready to enter as the current value of <code>poc_Audit_Secret</code> in step 5. Development and test environments only (see <a href="#option-b">option B</a>).</p>
+          <p data-step3="C"><strong>Option C:</strong> upload the certificate's public key to the app registration, and store the PFX and its password, ideally in Key Vault. You set the HTTP actions' credential type to Certificate in step 7 (see <a href="#option-c">option C</a>).</p>
+        </div></li>
+        <li><div class="card">
+          <div class="step-head"><h3>Create a solution</h3><label class="step-done" data-jsonly hidden><input type="checkbox" data-step="3">Done<span class="visually-hidden">: create a solution</span></label></div>
+          <p>In the development environment, create a solution with your own publisher, and build everything below inside it (<a href="https://learn.microsoft.com/power-platform/alm/solution-concepts-alm">solution concepts</a>, <a href="https://learn.microsoft.com/power-apps/maker/data-platform/create-solution">create a solution</a>).</p>
+        </div></li>
+        <li><div class="card">
+          <div class="step-head"><h3>Create the three tables</h3><label class="step-done" data-jsonly hidden><input type="checkbox" data-step="4">Done<span class="visually-hidden">: create the three tables</span></label></div>
+          <p>Create the tables in the <a href="#data-model">data model</a>, with the columns in <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#dataverse-tables-written-by-the-flows">Dataverse tables</a>, and apply its clean-build changes (<a href="https://learn.microsoft.com/power-apps/maker/data-platform/create-edit-entities-portal">create tables</a>). When a flow sets a choice column, pick the option by its label.</p>
+        </div></li>
+        <li><div class="card">
+          <div class="step-head"><h3>Create the environment variables</h3><label class="step-done" data-jsonly hidden><input type="checkbox" data-step="5">Done<span class="visually-hidden">: create the environment variables</span></label></div>
+          <p>Create the variables in <a href="#env-vars">Environment variables</a>, and set the values for your secret option (<a href="https://learn.microsoft.com/power-apps/maker/data-platform/environmentvariables-power-automate">environment variables in flows</a>).</p>
+        </div></li>
+        <li><div class="card">
+          <div class="step-head"><h3>Create a connection reference</h3><label class="step-done" data-jsonly hidden><input type="checkbox" data-step="6">Done<span class="visually-hidden">: create a connection reference</span></label></div>
+          <p>Create a connection reference for Microsoft Dataverse inside the solution, mapped to a connection owned by the flow owner (<a href="https://learn.microsoft.com/power-apps/maker/data-platform/create-connection-reference">connection references</a>).</p>
+        </div></li>
+        <li><div class="card">
+          <div class="step-head"><h3>Build the flows</h3><label class="step-done" data-jsonly hidden><input type="checkbox" data-step="7">Done<span class="visually-hidden">: build the flows</span></label></div>
+          <ol>
+            <li>Build the scheduled flow phase by phase, from <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#phase-a-initialise">Phase A</a> to <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#phases-e-and-f-error-handling-and-completeness">Phases E and F</a>, using the <a href="#gallery">screenshots</a> as a visual guide.</li>
+            <li>Build the <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#the-manual-flow">manual flow</a>, which is the same except for its trigger (two dates), its window and a few listed differences.</li>
+            <li>Turn on the <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#recommended-settings">recommended secure inputs and outputs</a>, and size the <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#loop-limits">loop limits</a> for your volume.</li>
+            <li>Add a note to each action saying why it exists (<a href="https://learn.microsoft.com/power-automate/overview-solution-flows">solution-aware flows</a>).</li>
+          </ol>
+        </div></li>
+        <li><div class="card">
+          <div class="step-head"><h3>Validate</h3><label class="step-done" data-jsonly hidden><input type="checkbox" data-step="8">Done<span class="visually-hidden">: validate</span></label></div>
+          <p>Run the manual flow over one day that's at least four days old. <span class="no-js-only">For example, if today is the 10th, use StartDate <code>…-06</code> and EndDate <code>…-07</code>.</span><span data-jsonly hidden>For example, today you could use StartDate <code id="val-start">…</code> and EndDate <code id="val-end">…</code> (UTC; EndDate is exclusive).</span> Then confirm all of these:</p>
+          <ul>
+            <li>the run <strong>Succeeded</strong> in run history;</li>
+            <li>the new Copilot Interaction Flow Runs row shows <strong>Records Retrieved</strong> above 0, if anyone used Copilot that day;</li>
+            <li>the Copilot Interactions row count for that day is close to a Purview Audit search over the same day;</li>
+            <li>Copilot Interaction Flow Run Errors has no new rows;</li>
+            <li>run history doesn't show the secret.</li>
+          </ul>
+          <p>Then work through the <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#clean-build-checklist">clean-build checklist</a>.</p>
+        </div></li>
+        <li><div class="card">
+          <div class="step-head"><h3>Lock it down</h3><label class="step-done" data-jsonly hidden><input type="checkbox" data-step="9">Done<span class="visually-hidden">: lock it down</span></label></div>
+          <p>Give report readers a read-only security role, schedule a bulk-delete job for your retention period, confirm the data policy and set up monitoring (see <a href="#failures">Failure states and monitoring</a>). Secure run history as described in <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#securing-run-history">Securing run history</a>.</p>
+        </div></li>
+        <li><div class="card">
+          <div class="step-head"><h3>Promote it</h3><label class="step-done" data-jsonly hidden><input type="checkbox" data-step="10">Done<span class="visually-hidden">: promote it</span></label></div>
+          <p>Follow <a href="#export-hygiene">Export hygiene</a> first. Then export the solution as managed and import it into test, then production (<a href="https://learn.microsoft.com/power-apps/maker/data-platform/export-solutions">export solutions</a>), and set the environment variable values in each target environment.</p>
+        </div></li>
+      </ol>
+    </section>
+
+    <section class="section" id="data-model" aria-labelledby="data-model-h">
+      <p class="section-kicker">Dataverse</p>
+      <h2 id="data-model-h">Data model</h2>
+      <p>The flows write to three custom tables. All three are user or team owned, and none uses auditing, change tracking or alternate keys. This guide includes no security role, so create your own. See <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#dataverse-tables-written-by-the-flows">Dataverse tables written by the flows</a> and <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#upsert-mapping">Upsert mapping</a>.</p>
+      <p>The tables aren't related in the reference build. A clean build adds a lookup from each error row to its run.</p>
+      <div class="callout callout-warning" role="note">
+        <p class="callout-title"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 21h20L12 3z"/><path d="M12 10v5M12 18h.01"/></svg>CreationTime is an hour out during British Summer Time</p>
+        <p>The reference build converts the audit time from UTC to UK time and sends it with no offset, and Dataverse stores a value without an offset as UTC. In your build, send UTC: <code>formatDateTime(items('For_each_1')?['auditData']?['CreationTime'], 'yyyy-MM-ddTHH:mm:ssZ')</code> for CreationTime, and the same expression with <code>'yyyy-MM-dd'</code> for CreationDate. See <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#upsert-mapping">Upsert mapping</a>.</p>
+      </div>
+      <details open>
+        <summary>Copilot Interactions (<code>poc_CopilotInteraction</code>): one row per audit record</summary>
+        <div class="details-body">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th scope="col">Column</th><th scope="col">Source (<code>auditData</code> unless noted)</th><th scope="col">Notes</th></tr></thead>
+              <tbody>
+                <tr><td><code>poc_AuditLogID</code></td><td>record <code>id</code></td><td>Primary name column. The upsert also sets the row's primary key (<code>poc_CopilotInteractionId</code>) to the same audit record <code>id</code>, which the lookup and upsert use. There is no alternate key.</td></tr>
+                <tr><td><code>poc_UserID</code></td><td>record <code>userPrincipalName</code></td><td><strong>Personal data.</strong></td></tr>
+                <tr><td><code>poc_ClientIP</code></td><td><code>ClientIP</code></td><td><strong>Personal data.</strong> About 58% populated in the reference data.</td></tr>
+                <tr><td><code>poc_ClientRegion</code></td><td><code>ClientRegion</code></td><td></td></tr>
+                <tr><td><code>poc_CreationDate</code></td><td><code>CreationTime</code>. The reference build converts it to UK time; send the UTC date.</td><td>Date only, Time zone independent.</td></tr>
+                <tr><td><code>poc_CreationTime</code></td><td><code>CreationTime</code>. The reference build converts it to UK time; send UTC.</td><td>Date and time, User local. An hour out during British Summer Time in the reference build.</td></tr>
+                <tr><td><code>poc_Operation</code></td><td><code>Operation</code></td><td><code>CopilotInteraction</code>.</td></tr>
+                <tr><td><code>poc_Workload</code></td><td><code>Workload</code></td><td><code>Copilot</code>.</td></tr>
+                <tr><td><code>poc_AppIdentity</code></td><td><code>AppIdentity</code></td><td>For example <code>Copilot.M365Copilot.Apps</code>, or <code>Copilot.Studio.&lt;id&gt;-&lt;agent schema name&gt;</code> for Copilot Studio agents. Can be empty.</td></tr>
+                <tr><td><code>poc_AppHost</code></td><td><code>CopilotEventData.AppHost</code></td><td>The app where the interaction happened, for example <code>Microsoft Teams</code>, <code>Word</code>, <code>Outlook</code>, <code>Office</code> or <code>Copilot Studio</code>.</td></tr>
+                <tr><td><code>poc_AgentId</code></td><td><code>AgentId</code></td><td>Present when an agent was involved.</td></tr>
+                <tr><td><code>poc_AgentPlatform</code></td><td><code>AgentPlatform</code></td><td>For example <code>CopilotStudio</code>. Often empty.</td></tr>
+                <tr><td><code>poc_PlatformAgentId</code></td><td><code>PlatformAgentId</code></td><td></td></tr>
+                <tr><td><code>poc_ConversationId</code></td><td><code>CopilotEventData.ConversationId</code></td><td></td></tr>
+                <tr><td><code>poc_ThreadId</code></td><td><code>CopilotEventData.ThreadId</code></td><td>Populated on every row in the reference data, so it's the better session key.</td></tr>
+                <tr><td><code>poc_ResourceCount</code></td><td>length of <code>CopilotEventData.AccessedResources</code></td><td>Counted before duplicates are removed.</td></tr>
+                <tr><td><code>poc_Resources</code></td><td>distinct resource <code>Name</code> (or <code>Type</code>), separated by <code>; </code></td><td>Truncated to 4,000 characters. <strong>May reveal confidential file or site names.</strong></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>Five of these fields (Agent Id, AppIdentity, Conversation Id, Agent Platform and Platform Agent Id) aren't in Microsoft's published Copilot schema, or are only partly documented. Check them against your own data before you rely on them.</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>Copilot Interaction Flow Runs (<code>poc_CopilotInteractionFlowRuns</code>): the run log, one row per run</summary>
+        <div class="details-body">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th scope="col">Column</th><th scope="col">Notes</th></tr></thead>
+              <tbody>
+                <tr><td><code>Name</code></td><td>Your own label plus the run start time (UTC). The reference build uses the flow's display name.</td></tr>
+                <tr><td><code>AuditQueryStartDate</code>, <code>AuditQueryEndDate</code></td><td>The collection window.</td></tr>
+                <tr><td><code>FlowStartDateandTime</code></td><td>When the run started (UTC).</td></tr>
+                <tr><td><code>RunType</code></td><td><code>Scheduled</code> or <code>Manual</code>.</td></tr>
+                <tr><td><code>FlowState</code></td><td><em>Running</em> while a page is processed, then <em>Finished</em> after each page. It doesn't show whether the window was collected completely; check the run status.</td></tr>
+                <tr><td><code>RecordsRetrieved</code></td><td>Records successfully upserted. Despite the name, it isn't the raw count returned by Graph.</td></tr>
+                <tr><td><code>RecordsCreated</code></td><td>Records the lookup didn't find (new rows), or where the lookup failed.</td></tr>
+                <tr><td><code>RecordsModified</code></td><td>Records that already existed.</td></tr>
+                <tr><td><code>RecordsError</code></td><td>Failed upserts. <strong>Those records weren't saved.</strong></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>The counts are running totals, updated after each page, and include pages that were read more than once. Treat them as indicative; run history is authoritative.</p>
+        </div>
+      </details>
+      <details>
+        <summary>Copilot Interaction Flow Run Errors (<code>poc_CopilotInteractionFlowRunErrors</code>): one row per failure</summary>
+        <div class="details-body">
+          <p>Columns: <code>PrimaryDetail</code>, <code>ErrorReason</code>, <code>ErrorDate</code>, <code>ErrorDateandTime</code>. The flows write three kinds of row:</p>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th scope="col"><code>PrimaryDetail</code> starts with</th><th scope="col">Written</th><th scope="col">Details</th></tr></thead>
+              <tbody>
+                <tr><td><em>Failed - Upsert a row 2</em></td><td>Once per record whose write failed</td><td>The row doesn't include the audit record <code>id</code>.</td></tr>
+                <tr><td><em>Failed - Collection incomplete - window … - run …</em></td><td>Once per incomplete run</td><td><code>ErrorReason</code> gives <em>Query started</em>, <em>Pages left unread</em> and <em>Failed Graph calls</em>. The run then fails with <code>CollectionIncomplete</code>.</td></tr>
+                <tr><td><em>Failed - Unbound Action call to AKV</em></td><td>Option A only, when the Key Vault secret can't be read</td><td>The run then fails with <code>KeyVaultSecretUnavailable</code>.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </details>
+      <p>For reporting ideas, see <a href="#reporting">Reporting</a>.</p>
+      <div class="callout callout-warning" role="note">
+        <p class="callout-title"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 21h20L12 3z"/><path d="M12 10v5M12 18h.01"/></svg>Personal data</p>
+        <p>Copilot Interactions holds personal data. Restrict all three tables with security roles, agree a retention period and delete older rows on a schedule with a <a href="https://learn.microsoft.com/power-platform/admin/delete-bulk-records">bulk deletion job</a>.</p>
+      </div>
+    </section>
+
+    <section class="section" id="reporting" aria-labelledby="reporting-h">
+      <p class="section-kicker">Build your own view</p>
+      <h2 id="reporting-h">Reporting</h2>
+      <p>The build is a collector only: you build the report. Connect Power BI to the three tables with the <a href="https://learn.microsoft.com/power-query/connectors/dataverse">Dataverse connector</a>, or use any Dataverse client.</p>
+      <figure class="shot report-shot">
+        <a href="images/report-copilot-interactions.png" data-lightbox><img src="images/report-copilot-interactions.png" width="1389" height="725" loading="lazy" alt="An example Power BI report page with cards for interactions, sessions and agents with usage, a daily interaction trend, traffic by surface type, sessions and turns by month, and client surfaces"></a>
+        <figcaption>Illustrative — demo environment; names fictitious; figures indicative only.</figcaption>
+      </figure>
+      <h3>Ideas for a first report</h3>
+      <ul>
+        <li><strong>Interactions over time</strong> from <strong>CreationDate</strong>, once you store UTC (see <a href="#data-model">Data model</a>).</li>
+        <li><strong>Sessions</strong> as distinct <strong>Thread Id</strong> values. Thread Id is populated on every row in the reference data, so it's a better session key than Conversation Id.</li>
+        <li><strong>Where people use Copilot</strong>, by <strong>App Host</strong> and <strong>AppIdentity</strong>.</li>
+        <li><strong>Agents</strong>, by <strong>Agent Id</strong> and <strong>Agent Platform</strong>, joined to your own agent inventory.</li>
+        <li><strong>Collection health</strong> from the run log and error rows, including days with no rows (see <a href="#failures">Failure states</a>).</li>
+      </ul>
+      <p>For a fuller example that combines this data with agent inventory from several platforms, see <a href="https://github.com/RyanBowie/custom-agent-reporting-architecture">Custom Agent Reporting – Architecture</a>.</p>
+    </section>
+
+    <section class="section" id="failures" aria-labelledby="failures-h">
+      <p class="section-kicker">Run</p>
+      <h2 id="failures-h">Failure states and monitoring</h2>
+      <div class="callout callout-info" role="note">
+        <p class="callout-title"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5h.01"/></svg>Important</p>
+        <p><strong>Run history is the source of truth.</strong> The <code>FlowState</code> column only ever shows <em>Running</em> or <em>Finished</em>, never <em>Failed</em>, and <em>Finished</em> is set after every page, not only at the end. A failed run can leave its row on <em>Running</em>, or show <em>Finished</em> with partial counts.</p>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th scope="col">Run result</th><th scope="col">Code / action</th><th scope="col">Meaning</th><th scope="col">What to do</th></tr></thead>
+          <tbody>
+            <tr><td><span class="badge badge-success">Succeeded</span></td><td></td><td>Every page was read and every record was upserted, or the failures were logged as error rows.</td><td>Check <code>RecordsError</code> and the error rows.</td></tr>
+            <tr><td><span class="badge badge-danger">Failed</span></td><td><code>CollectionIncomplete</code></td><td>The query never started, or pages were left unread. An error row records <code>Query started</code>, <code>Pages left unread</code> and <code>Failed Graph calls</code>.</td><td>Fix the cause (see <a href="#troubleshooting">Troubleshooting</a>), then re-run the window with the manual flow.</td></tr>
+            <tr><td><span class="badge badge-danger">Failed</span></td><td><code>GetLogsFailed</code></td><td>An unhandled failure inside the collection scope (<code>Get_Logs</code>). The reference build writes no error row for it.</td><td>Open the run, find the failed action, fix it and re-run the window.</td></tr>
+            <tr><td><span class="badge badge-danger">Failed</span></td><td><code>KeyVaultSecretUnavailable</code></td><td>Option A only: the Key Vault secret couldn't be read. An error row is written before the run log exists.</td><td>Check RBAC, the resource provider, networking and the reference path.</td></tr>
+            <tr><td><span class="badge badge-danger">Failed</span></td><td><code>QueryWaitTimeExceeded</code> action</td><td>Meant to stop a run whose query didn't finish in time. It never ran in testing, because a Do until loop that reaches its limit ends Succeeded (<a href="https://learn.microsoft.com/azure/logic-apps/logic-apps-control-flow-loops#until-loop-considerations">Until-loop considerations</a>).</td><td>In your build, check the query's <code>status</code> after the wait loop and fail the run if it isn't <code>succeeded</code>.</td></tr>
+            <tr><td><span class="badge">Any</span></td><td><code>RecordsError</code> above 0, or <em>Failed - Upsert a row 2</em> rows</td><td>At least one record write failed. If the run failed, records are missing. If it succeeded, the page was read again and the write succeeded on a later pass.</td><td>Fix the cause (for example capacity, permissions or throttling), then re-run the window. Re-running is safe.</td></tr>
+            <tr><td><span class="badge badge-danger">Failed</span>, while <code>FlowState</code> shows <em>Finished</em></td><td><code>CollectionIncomplete</code></td><td>The run log was marked <em>Finished</em> after the last page processed, then the completeness check failed the run.</td><td>Trust the run status, and re-run the window.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3>Monitoring options</h3>
+      <p>The reference build sends no alerts. Choose at least one:</p>
+      <ul>
+        <li>Power Automate's built-in failure notification emails to the flow owner.</li>
+        <li>An alert flow on the Dataverse <a href="https://learn.microsoft.com/power-automate/dataverse/cloud-flow-run-metadata">cloud flow run metadata</a>.</li>
+        <li>The <a href="https://learn.microsoft.com/power-platform/guidance/coe/starter-kit">CoE Starter Kit</a>.</li>
+        <li>A Power BI tile showing days with no rows.</li>
+      </ul>
+      <p>Run history is kept for 28 days (<a href="https://learn.microsoft.com/power-automate/limits-and-config">limits</a>, <a href="https://learn.microsoft.com/troubleshoot/power-platform/power-automate/flow-run-issues/missing-runs-or-triggers-history-for-a-flow">missing run history</a>), so record failures somewhere that lasts longer. See also the <a href="https://learn.microsoft.com/power-automate/guidance/coding-guidelines/error-handling">error-handling guidance</a>, and <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#failure-paths">Failure paths</a> and <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#known-issues">Known issues</a> in the action reference.</p>
+    </section>
+
+    <section class="section" id="operations" aria-labelledby="operations-h">
+      <p class="section-kicker">Day two</p>
+      <h2 id="operations-h">Operations</h2>
+      <div class="callout callout-warning" role="note">
+        <p class="callout-title"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 21h20L12 3z"/><path d="M12 10v5M12 18h.01"/></svg>Missed days are not self-healing</p>
+        <p>The scheduled flow always collects the UTC day from four days ago. If a run fails, or the flow is off, that day is never collected again unless you back-fill it with the manual flow.</p>
+      </div>
+      <div class="card">
+        <h3>Back-fill with the manual flow</h3>
+        <p>Run the manual flow with <strong>StartDate</strong> and <strong>EndDate</strong> in <code>YYYY-MM-DD</code> format.</p>
+        <ul>
+          <li><strong>EndDate is exclusive.</strong> To collect 1 to 7 September, enter 1 September and <strong>8 September</strong>.</li>
+          <li>Keep EndDate at least 48 hours in the past, and StartDate within the last 180 days (the Audit (Standard) retention).</li>
+          <li>Overlapping windows are safe: the upsert updates existing rows rather than duplicating them.</li>
+          <li>Every run has the same 10-hour paging limit, so back-fill a few days at a time rather than weeks in one run (see <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#planning-for-high-volumes">Planning for high volumes</a>).</li>
+          <li><strong>British Summer Time.</strong> During BST, the reference build's manual window starts and ends at 01:00 UTC, so it misses the first hour of StartDate. Start one day earlier, or apply the fix in <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#the-manual-flow">The manual flow</a>: <code>@{triggerBody()?['date']}T00:00:00Z</code>.</li>
+        </ul>
+      </div>
+      <div class="card" id="backfill" data-jsonly hidden>
+        <h3>Backfill helper</h3>
+        <p class="small muted">Enter the first and last days you want collected (both inclusive, UTC calendar days). The helper works out the manual-flow StartDate and EndDate values and checks them against the limits above. Nothing is sent anywhere.</p>
+        <div class="form-row">
+          <div class="field"><label for="bf-first">First day to collect</label><input type="date" id="bf-first"></div>
+          <div class="field"><label for="bf-last">Last day to collect (inclusive)</label><input type="date" id="bf-last"></div>
+          <label class="check-inline"><input type="checkbox" id="bf-split" checked>One run per day (recommended for busy tenants)</label>
+        </div>
+        <div id="bf-msgs" aria-live="polite"></div>
+        <div class="table-wrap">
+          <table id="bf-table" data-nostack>
+            <caption class="visually-hidden">Manual flow runs to submit</caption>
+            <thead><tr><th scope="col">Run</th><th scope="col">StartDate</th><th scope="col">EndDate (exclusive)</th></tr></thead>
+            <tbody id="bf-body"></tbody>
+          </table>
+        </div>
+        <div class="toolbar"><button type="button" class="btn btn-sm" id="bf-copy">Copy runs</button><span class="small muted">Copies tab-separated rows for a change ticket or spreadsheet.</span></div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Volume</h3>
+          <p>The flow writes about 25 to 60 records a minute, so the 10-hour paging limit runs out at roughly 15,000 to 36,000 records a day. On a busier day, split the day into smaller windows. Don't turn on concurrency for the per-record loop: its counters are flow variables, and they become unreliable when iterations run in parallel. See <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#planning-for-high-volumes">Planning for high volumes</a>.</p>
+        </div>
+        <div class="card">
+          <h3>Time zone</h3>
+          <p>Store UTC (see <a href="#data-model">Data model</a>) and convert to local time in the report.</p>
+        </div>
+        <div class="card">
+          <h3>Schedule</h3>
+          <p>The reference build's Recurrence trigger sets no start time or hour, so it runs at about the time the flow was turned on. In your build, set an hour, for example 02:00.</p>
+        </div>
+        <div class="card">
+          <h3>Retention</h3>
+          <p>Create a recurring <a href="https://learn.microsoft.com/power-platform/admin/delete-bulk-records">bulk deletion job</a> that removes rows older than the agreed period from all three tables.</p>
+        </div>
+        <div class="card" id="rotate-secret">
+          <h3>Rotating the secret</h3>
+          <ol>
+            <li>Add a new client secret to the app registration.</li>
+            <li>Update the Key Vault secret (option A) or <code>poc_Audit_Secret</code> (option B) with the new secret's <strong>Value</strong>.</li>
+            <li>Save both flows, or turn them off and on again.</li>
+            <li>Run the manual flow over a short window.</li>
+            <li>Delete the old secret.</li>
+          </ol>
+        </div>
+        <div class="card">
+          <h3>Auditing changes</h3>
+          <p>Turn on <a href="https://learn.microsoft.com/power-platform/admin/manage-dataverse-auditing">Dataverse auditing</a> for the environment variable tables, to record who changed credentials or settings.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="troubleshooting" aria-labelledby="troubleshooting-h">
+      <p class="section-kicker">Fix</p>
+      <h2 id="troubleshooting-h">Troubleshooting</h2>
+      <div class="form-row" data-jsonly hidden>
+        <div class="field"><label for="ts-filter">Filter by error code or symptom</label><input type="search" id="ts-filter" placeholder="For example AADSTS or 403" autocomplete="off" aria-controls="ts-table"></div>
+        <span id="ts-count" class="small muted" aria-live="polite"></span>
+      </div>
+      <div class="table-wrap">
+        <table id="ts-table">
+          <thead><tr><th scope="col">Symptom</th><th scope="col">Likely cause</th><th scope="col">Fix</th></tr></thead>
+          <tbody>
+            <tr><td><code>AADSTS7000215</code> (invalid client secret)</td><td>The secret ID was used instead of its <strong>Value</strong>; the secret has expired; or the switch isn't exactly <code>true</code> and <code>poc_Audit_Secret</code> is empty.</td><td>Check the value, the expiry and the switch (see <a href="#secrets">Secret handling</a>).</td></tr>
+            <tr><td><code>AADSTS700016</code> (application not found)</td><td>The wrong client ID in <code>poc_Audit_AppRegID</code>, or the wrong tenant in <code>poc_Audit_Tenant</code>.</td><td>Copy both from the app registration's <strong>Overview</strong> page.</td></tr>
+            <tr><td>HTTP 401 or 403 from Graph</td><td><code>AuditLogsQuery.Read.All</code> is missing, or admin consent wasn't granted. <code>AuditLog.Read.All</code> isn't enough.</td><td>Add the permission and grant consent (see <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#graph-permissions">Graph permissions</a>).</td></tr>
+            <tr><td>Failed with <code>KeyVaultSecretUnavailable</code></td><td>The Key Vault secret couldn't be read.</td><td>Check the reference, the role assignments, the network rules and the secret's expiry (see <a href="#option-a">option A</a>).</td></tr>
+            <tr><td><code>CollectionIncomplete</code> with "Query started: no"</td><td>The query was never created, for example because of an expired secret, missing consent or Conditional Access. The run takes a few minutes to fail, because the records loop still makes its 5 attempts.</td><td>Fix the cause, then re-run the window.</td></tr>
+            <tr><td><code>CollectionIncomplete</code> with "Pages left unread: yes"</td><td>The page cap or the 10-hour limit was reached, or a page couldn't be read.</td><td>Re-run the window in smaller parts (see <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#failure-paths">Failure paths</a>).</td></tr>
+            <tr><td>Run succeeds but writes no rows</td><td>No Copilot activity in the window, auditing is off, or the records hadn't arrived yet.</td><td>Compare with a Purview Audit search for the same window, and keep windows at least 48 hours old.</td></tr>
+            <tr><td>Flow is suspended or turned off</td><td>The data policy, the connection reference or the owner's licence.</td><td>Check the data policy, the connection and the licence.</td></tr>
+            <tr><td>Times look an hour out</td><td>The British Summer Time defect in the reference build.</td><td>Store UTC (see <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#upsert-mapping">Upsert mapping</a>).</td></tr>
+            <tr><td>HTTP 429 from Graph</td><td>Throttling. The retry loops wait a fixed time and don't read <code>Retry-After</code>.</td><td>Use smaller windows, or run less often (see <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#limits-and-throttling">Limits and throttling</a>).</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p id="ts-none" class="msg msg-warn" hidden>No matching rows. Clear the filter to see all ten.</p>
+    </section>
+
+    <section class="section" id="limitations" aria-labelledby="limitations-h">
+      <p class="section-kicker">Know before you rely on it</p>
+      <h2 id="limitations-h">Limitations</h2>
+      <div class="card">
+        <h3>Scope</h3>
+        <p>Only audit records where <strong>both</strong> RecordType and Operation are <code>CopilotInteraction</code>. That covers Microsoft 365 Copilot, Copilot Chat and Copilot Studio agents. These aren't collected:</p>
+        <ul>
+          <li><code>ConnectedAIAppInteraction</code>;</li>
+          <li><code>AIAppInteraction</code>, which for non-Microsoft AI apps uses Purview pay-as-you-go billing;</li>
+          <li><code>TeamCopilotInteraction</code> (Facilitator);</li>
+          <li>Copilot admin activity.</li>
+        </ul>
+        <p>See <a href="https://learn.microsoft.com/purview/audit-copilot">Copilot audit logs</a> and <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#whats-collected-and-what-isnt">What's collected and what isn't</a>.</p>
+      </div>
+      <div class="card">
+        <h3>Query wait</h3>
+        <p>If Graph takes longer than the wait limit (8 hours scheduled, 3 hours manual) to finish the query, the wait loop still ends <em>Succeeded</em>, and the flow reads whatever the query returns. The run can therefore record fewer rows than exist. In your build, check the query's status after the wait (see <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#loop-limits">Loop limits</a>).</p>
+      </div>
+      <div class="card">
+        <h3>Record-count limit</h3>
+        <p>A query returns at most 1,000,000 records, and it can show <code>succeeded</code> even when the service stopped early. The reference build doesn't check <code>isRecordCountLimitExceeded</code>; your build should, and should fail the run when it's <code>true</code> (see <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#limits-and-throttling">Limits and throttling</a>).</p>
+      </div>
+      <div class="card" id="run-history-exposure">
+        <h3>Run history exposure</h3>
+        <p>In the reference build, the HTTP actions' outputs and the per-record actions aren't secured. Anyone who can see run history (flow owners, co-owners and environment admins) can therefore read raw records, including UPNs, IP addresses and resource names, for 28 days. To hide them in your build, change <strong>both</strong> flows:</p>
+        <ul>
+          <li>turn on <strong>Secure outputs</strong> on the three HTTP actions (<code>AuditLogQuery</code>, <code>AuditLogQueryStatus</code>, <code>AuditLogRecords</code>);</li>
+          <li>turn on <strong>Secure inputs</strong> and <strong>Secure outputs</strong>, where offered, on <code>ParseBody-AuditLogRecords</code> and on the per-record actions <code>Get_a_row_by_ID</code>, <code>Select_Resource_Names</code>, <code>Compose_Resources</code> and <code>Upsert_a_row_2</code>. Compose and Parse JSON offer only Secure inputs, which also hides their outputs.</li>
+        </ul>
+        <p>Securing an action's outputs doesn't hide everything downstream, so run a test afterwards and check the run history. Secured values no longer show in run history, which makes failures harder to debug. See <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#securing-run-history">Securing run history</a>, <a href="https://learn.microsoft.com/power-automate/how-tos-use-sensitive-input">secure inputs and outputs</a> and the <a href="https://learn.microsoft.com/power-automate/guidance/coding-guidelines/use-secure-inputs-outputs-triggers">coding guidelines</a>.</p>
+      </div>
+      <div class="card">
+        <h3>Throughput</h3>
+        <p>The per-record loop runs one record at a time (the <em>Apply to each</em> default; see <a href="https://learn.microsoft.com/power-automate/guidance/coding-guidelines/implement-parallel-execution#control-concurrency">concurrency control</a>), at roughly 25–60 records a minute in testing. Concurrency would speed it up, but the run counters are flow variables, which <a href="https://learn.microsoft.com/azure/logic-apps/logic-apps-control-flow-loops#for-each-loop-considerations">can give unpredictable results in a parallel loop</a>.</p>
+      </div>
+      <div class="card">
+        <h3>Power Platform request limits</h3>
+        <p>On a busy tenant these can matter more than the loop limits (<a href="https://learn.microsoft.com/power-platform/admin/api-request-limits-allocations#request-limits-in-power-automate">request limits</a>, <a href="https://learn.microsoft.com/power-automate/guidance/coding-guidelines/understand-limits#what-to-do-when-your-flow-is-throttled">when a flow is throttled</a>, <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#request-limits">Request limits</a>).</p>
+        <ul>
+          <li>Each record costs about 6 requests, and up to 9.</li>
+          <li>In the current transition period, a cloud flow gets 200,000 requests per 24 hours: very roughly 20,000–30,000 records a day.</li>
+          <li>The official limit is 40,000 requests per user, shared with the owner's other flows: about 4,000–6,000 records a day. At the time of writing, Microsoft says it won't enforce this until at least six months after Power Automate usage reporting becomes generally available.</li>
+          <li>For high volumes, assign a Process licence to the scheduled flow: 250,000 requests per 24 hours per licence, and licences can be stacked.</li>
+          <li>Check consumption in the Power Platform admin center under <strong>Licensing</strong> &gt; <strong>Power Automate</strong> &gt; <strong>Usage</strong>. Dataverse service protection limits apply separately.</li>
+        </ul>
+      </div>
+      <div class="grid-3">
+        <div class="card"><h3>Beta endpoint</h3><p>The flows use the Microsoft Graph beta endpoint, which isn't supported in production. The v1.0 record-type list has no <code>CopilotInteraction</code>, so a v1.0 build must filter by operation only, and needs validating (see <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#switching-to-v10">Switching to v1.0</a>).</p></div>
+        <div class="card"><h3>One tenant, global cloud</h3><p>One build collects from the tenant of its app registration, in the global (commercial) cloud only.</p></div>
+        <div class="card"><h3>Collector only</h3><p>There's no report, alerting or retention job. Build them yourself (see <a href="#reporting">Reporting</a>).</p></div>
+      </div>
+    </section>
+
+    <section class="section" id="export-hygiene" aria-labelledby="export-hygiene-h">
+      <p class="section-kicker">Sharing your build</p>
+      <h2 id="export-hygiene-h">Export hygiene (ALM)</h2>
+      <div class="callout callout-danger" role="note">
+        <p class="callout-title"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 21h20L12 3z"/><path d="M12 10v5M12 18h.01"/></svg>Exports don't mask values</p>
+        <p>Solution export doesn't mask environment variable values. A Text variable's current value, such as the plain-text secret in option B, is exported in clear text if it's in the solution. Before you export, follow these steps.</p>
+      </div>
+      <ol class="steps">
+        <li>Remove the current value of every environment variable from the solution (<strong>...</strong> &gt; <strong>Remove from this solution</strong>), and keep the default values empty or non-sensitive.</li>
+        <li>Export, unzip the solution file and inspect the workflow JSON, <code>customizations.xml</code> and any <code>environmentvariablevalues.json</code>.</li>
+        <li>Confirm that there's no client secret, token, tenant ID, client ID or email address in any file, and no current-value file at all.</li>
+        <li>Set the values in each target environment after import, or with a <a href="https://learn.microsoft.com/power-platform/alm/conn-ref-env-variables-build-tools">deployment settings file</a>.</li>
+      </ol>
+    </section>
+
+    <section class="section" id="origins" aria-labelledby="origins-h">
+      <p class="section-kicker">Where the pattern comes from</p>
+      <h2 id="origins-h">Origins and credit</h2>
+      <p>This build is adapted from the audit log collection pattern in the <a href="https://learn.microsoft.com/power-platform/guidance/coe/starter-kit">Microsoft Power Platform CoE Starter Kit</a>, described in <a href="https://learn.microsoft.com/power-platform/guidance/coe/setup-auditlog-http-graphapi">Collect audit logs using an HTTP action with Microsoft Graph</a>. The kit is open source under the MIT licence at <a href="https://github.com/microsoft/coe-starter-kit">github.com/microsoft/coe-starter-kit</a>. Microsoft describes it as no longer actively maintained, with its core capabilities now in the Power Platform admin center. Credit for the original pattern belongs to the CoE Starter Kit team.</p>
+      <p>This build changes the pattern: it collects only <code>CopilotInteraction</code> records into their own table, logs every run and every failure, lets you choose Key Vault or a plain-text variable for the secret, fails the run loudly when collection is incomplete, and adds a manual back-fill flow. Some legacy actions and variables from earlier versions remain in the reference build and are labelled <strong>Legacy</strong> in the reference. See <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#origins-and-credit">Origins and credit</a> in the action reference.</p>
+    </section>
+
+    <section class="section" id="related" aria-labelledby="related-h">
+      <p class="section-kicker">See also</p>
+      <h2 id="related-h">Related</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3><a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md">Action reference</a></h3>
+          <p>Every action in both flows: what it does, why it exists, and what to change in a clean build.</p>
+        </div>
+        <div class="card">
+          <h3><a href="https://github.com/RyanBowie/custom-agent-reporting-architecture">Custom Agent Reporting – Architecture</a></h3>
+          <p>A reference architecture for tenant-wide agent reporting that uses this build as its interaction-telemetry source.</p>
+        </div>
+      </div>
+      <ul class="link-list">
+        <li><a href="https://learn.microsoft.com/purview/audit-copilot">Audit logs for Copilot and AI applications</a></li>
+        <li><a href="https://learn.microsoft.com/purview/audit-get-started">Get started with auditing</a></li>
+        <li><a href="https://learn.microsoft.com/purview/audit-solutions-overview">Auditing solutions in Microsoft Purview</a></li>
+      </ul>
+    </section>
+  </main>
+</div>
+
+<footer class="site-footer">
+  <div class="inner">
+    <p>Copilot Interaction Logging · <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/LICENSE">MIT licence</a> · <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md">Action reference</a> · <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/CHANGELOG.md">Changelog</a> · <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/SECURITY.md">Security policy</a> · <a href="https://github.com/RyanBowie/copilot-interaction-logging#readme">README</a></p>
+    <p>Provided <strong>as is</strong>, without warranty of any kind. You're responsible for assessing, operating and securing anything you build from this guide.</p>
+    <p>Microsoft, Microsoft 365, Copilot, Power Platform, Power Automate, Power BI, Dataverse, Entra, Purview, Sentinel, Defender and Azure are trademarks of the Microsoft group of companies. This project isn't affiliated with or endorsed by Microsoft.</p>
+  </div>
+</footer>
+<div id="sr-status" class="visually-hidden" aria-live="polite"></div>
+
+<script>
+(() => {
+  "use strict";
+  const $ = (s, r) => (r || document).querySelector(s);
+  const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* storage unavailable */ } },
+    del(k) { try { localStorage.removeItem(k); } catch (e) { /* storage unavailable */ } },
+    json(k) { try { return JSON.parse(this.get(k)); } catch (e) { return null; } }
+  };
+  const srStatus = $("#sr-status");
+  let srTimer;
+  const announce = (text) => {
+    if (!srStatus) return;
+    srStatus.textContent = "";
+    clearTimeout(srTimer);
+    srTimer = setTimeout(() => { srStatus.textContent = text; }, 60);
+  };
+  const DAY = 86400000;
+  const utcToday = () => { const n = new Date(); return Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate()); };
+  const iso = (t) => new Date(t).toISOString().slice(0, 10);
+  const parseDate = (s) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ""); return m ? Date.UTC(+m[1], +m[2] - 1, +m[3]) : NaN; };
+  const reduceMotion = () => !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+
+  $$("[data-jsonly]").forEach((el) => el.removeAttribute("hidden"));
+
+  /* Tables: label each cell with its column header so narrow screens can show rows as cards */
+  const stackTable = (table) => {
+    if (!table || table.hasAttribute("data-nostack")) return;
+    const heads = $$("thead th", table).map((th) => th.textContent.replace(/\s+/g, " ").trim());
+    table.setAttribute("role", "table");
+    $$("thead, tbody", table).forEach((g) => g.setAttribute("role", "rowgroup"));
+    $$("tr", table).forEach((tr) => {
+      tr.setAttribute("role", "row");
+      const inHead = tr.parentElement.tagName === "THEAD";
+      Array.from(tr.children).forEach((cell, i) => {
+        cell.setAttribute("role", inHead ? "columnheader" : cell.tagName === "TH" ? "rowheader" : "cell");
+        if (!inHead && i > 0 && heads[i]) cell.setAttribute("data-label", heads[i]);
+      });
+    });
+    table.classList.add("stack");
+  };
+  $$(".table-wrap > table").forEach(stackTable);
+
+  /* Theme */
+  const root = document.documentElement;
+  const themeBtn = $("#theme-toggle");
+  const syncThemeLabel = () => {
+    if (!themeBtn) return;
+    const label = root.getAttribute("data-theme") === "dark" ? "Switch to light theme" : "Switch to dark theme";
+    themeBtn.setAttribute("aria-label", label);
+    themeBtn.setAttribute("title", label);
+  };
+  if (themeBtn) themeBtn.addEventListener("click", () => {
+    const next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    store.set("cil-theme", next);
+    syncThemeLabel();
+  });
+  syncThemeLabel();
+  if (window.matchMedia && !new URLSearchParams(location.search).has("scoutTheme")) {
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const onScheme = (e) => {
+      const saved = store.get("cil-theme");
+      if (saved === "light" || saved === "dark") return;
+      root.setAttribute("data-theme", e.matches ? "dark" : "light");
+      syncThemeLabel();
+    };
+    if (mq.addEventListener) mq.addEventListener("change", onScheme); else if (mq.addListener) mq.addListener(onScheme);
+  }
+
+  /* Scrollspy for the side contents and the chip bar */
+  const sections = $$("main section[id]");
+  const tocLinks = $$(".toc a[href^='#']");
+  const chipNav = $("#chips");
+  const chipLinks = $$("#chips a[href^='#']");
+  let activeId = null;
+  const setActive = (id) => {
+    if (id === activeId) return;
+    activeId = id;
+    tocLinks.concat(chipLinks).forEach((a) => {
+      if (a.getAttribute("href") === "#" + id) a.setAttribute("aria-current", "true");
+      else a.removeAttribute("aria-current");
+    });
+    const chip = chipLinks.find((a) => a.getAttribute("href") === "#" + id);
+    if (chip && chipNav && chipNav.scrollWidth > chipNav.clientWidth) {
+      chipNav.scrollTo({ left: Math.max(0, chip.offsetLeft - (chipNav.clientWidth - chip.offsetWidth) / 2), behavior: reduceMotion() ? "auto" : "smooth" });
+    }
+  };
+  const compute = () => {
+    if (!sections.length) return;
+    const line = window.innerHeight * 0.3;
+    let current = sections[0].id;
+    for (const s of sections) {
+      if (s.getBoundingClientRect().top <= line) current = s.id; else break;
+    }
+    if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2) current = sections[sections.length - 1].id;
+    setActive(current);
+  };
+  let ticking = false;
+  const queueCompute = () => {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => { ticking = false; compute(); });
+  };
+  window.addEventListener("scroll", queueCompute, { passive: true });
+  window.addEventListener("resize", queueCompute);
+  if ("IntersectionObserver" in window) {
+    const io = new IntersectionObserver(queueCompute, { rootMargin: "0px 0px -70% 0px" });
+    sections.forEach((s) => io.observe(s));
+  }
+  compute();
+
+  /* Copy to clipboard */
+  const legacyCopy = (text) => new Promise((resolve, reject) => {
+    const prev = document.activeElement;
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "fixed";
+    ta.style.top = "-1000px";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    let ok = false;
+    try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+    ta.remove();
+    if (prev && prev.focus) prev.focus();
+    if (ok) resolve(); else reject(new Error("Copy failed"));
+  });
+  const copyText = (text) => (navigator.clipboard && window.isSecureContext)
+    ? navigator.clipboard.writeText(text).catch(() => legacyCopy(text))
+    : legacyCopy(text);
+  const original = new WeakMap();
+  const timers = new WeakMap();
+  const flash = (btn, ok, okText) => {
+    if (!original.has(btn)) original.set(btn, btn.innerHTML);
+    clearTimeout(timers.get(btn));
+    btn.textContent = ok ? "Copied" : "Copy failed";
+    timers.set(btn, setTimeout(() => { btn.innerHTML = original.get(btn); }, 2000));
+    announce(ok ? (okText || "Copied to the clipboard.") : "Copy failed. Select the text and copy it manually.");
+  };
+  const copyWithFeedback = (btn, text, okText) => copyText(text).then(() => flash(btn, true, okText), () => flash(btn, false));
+  $$(".copy-btn").forEach((btn) => btn.addEventListener("click", () => {
+    const id = btn.getAttribute("data-copy-target");
+    const src = id ? document.getElementById(id) : null;
+    const text = src ? src.textContent.trim() : (btn.getAttribute("data-copy-text") || "");
+    if (text) copyWithFeedback(btn, text);
+  }));
+
+  /* Print: expand collapsed details, then restore them */
+  let reopened = [];
+  window.addEventListener("beforeprint", () => {
+    reopened = $$("details:not([open])");
+    reopened.forEach((d) => d.setAttribute("open", ""));
+  });
+  window.addEventListener("afterprint", () => {
+    reopened.forEach((d) => d.removeAttribute("open"));
+    reopened = [];
+  });
+
+  /* Approval checklist */
+  const CL_KEY = "cil-checklist-v2";
+  const clItems = $$("#checklist-list > li").map((li) => {
+    const chk = $("input[type=checkbox]", li);
+    const key = chk ? chk.id.replace(/^chk-/, "") : "";
+    return { li, chk, key, owner: key ? document.getElementById("own-" + key) : null };
+  }).filter((x) => x.chk && x.key);
+  const clState = store.json(CL_KEY) || {};
+  const clChecks = clState.checks && typeof clState.checks === "object" ? clState.checks : {};
+  const clOwners = clState.owners && typeof clState.owners === "object" ? clState.owners : {};
+  const setProgress = (barId, done, total, noun) => {
+    const bar = document.getElementById(barId);
+    if (!bar) return;
+    bar.style.width = (total ? (done / total) * 100 : 0) + "%";
+    const p = bar.parentElement;
+    if (p) {
+      p.setAttribute("aria-valuenow", String(done));
+      p.setAttribute("aria-valuetext", done + " of " + total + " " + noun);
+    }
+  };
+  const saveChecklist = () => {
+    const checks = {}, owners = {};
+    clItems.forEach((x) => {
+      if (x.chk.checked) checks[x.key] = true;
+      if (x.owner && x.owner.value.trim()) owners[x.key] = x.owner.value;
+    });
+    store.set(CL_KEY, JSON.stringify({ checks, owners }));
+  };
+  const updateChecklist = () => {
+    const done = clItems.filter((x) => x.chk.checked).length;
+    clItems.forEach((x) => x.li.classList.toggle("is-checked", x.chk.checked));
+    setProgress("checklist-bar", done, clItems.length, "agreed");
+    const count = $("#checklist-count");
+    if (count) count.textContent = done + " of " + clItems.length + " agreed";
+  };
+  clItems.forEach((x) => {
+    x.chk.checked = clChecks[x.key] === true;
+    if (x.owner && typeof clOwners[x.key] === "string") x.owner.value = clOwners[x.key];
+    x.chk.addEventListener("change", () => { updateChecklist(); saveChecklist(); });
+    if (x.owner) x.owner.addEventListener("input", saveChecklist);
+  });
+  updateChecklist();
+  const optionLabel = () => {
+    const r = $("input[name='secret-option']:checked");
+    const name = r && r.closest("label") ? $(".choice-name", r.closest("label")) : null;
+    if (!name) return "not chosen";
+    const c = name.cloneNode(true);
+    $$(".badge", c).forEach((b) => { b.textContent = "(" + b.textContent.trim() + ")"; });
+    return c.textContent.replace(/\s+/g, " ").trim();
+  };
+  const localDate = () => {
+    const d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  };
+  const checklistMarkdown = () => {
+    const done = clItems.filter((x) => x.chk.checked).length;
+    const lines = [
+      "## Copilot Interaction Logging — approval checklist", "",
+      "Build guide: https://github.com/RyanBowie/copilot-interaction-logging", "",
+      "Secret option: " + optionLabel(), "",
+      "Date: " + localDate() + " · " + done + " of " + clItems.length + " agreed", ""
+    ];
+    clItems.forEach((x) => {
+      const label = $("label[for='" + x.chk.id + "']", x.li);
+      const strong = label ? $("strong", label) : null;
+      const title = strong ? strong.textContent.trim().replace(/:\s*$/, "") : x.key;
+      let text = "";
+      if (label) {
+        const c = label.cloneNode(true);
+        const s = $("strong", c);
+        if (s) s.remove();
+        text = c.textContent.replace(/\s+/g, " ").trim();
+      }
+      const owner = x.owner && x.owner.value.trim() ? x.owner.value.trim() : "_not recorded_";
+      lines.push("- [" + (x.chk.checked ? "x" : " ") + "] **" + title + ":** " + text + " — Owner/evidence: " + owner);
+    });
+    return lines.join("\n") + "\n";
+  };
+  const clCopy = $("#checklist-copy");
+  if (clCopy) clCopy.addEventListener("click", () => copyWithFeedback(clCopy, checklistMarkdown(), "Checklist copied as Markdown."));
+  const clReset = $("#checklist-reset");
+  if (clReset) clReset.addEventListener("click", () => {
+    if (!window.confirm("Clear every tick and owner in the approval checklist? This only affects this browser.")) return;
+    clItems.forEach((x) => { x.chk.checked = false; if (x.owner) x.owner.value = ""; });
+    store.del(CL_KEY);
+    updateChecklist();
+    announce("Checklist cleared.");
+  });
+  /* Secret option chooser */
+  const OPT_KEY = "cil-secret-option";
+  const ENV = {
+    tenant: ["Set", "Set", "Set"],
+    appreg: ["Set", "Set", "Set"],
+    flag: ["Set to <code>true</code>", "Set to <code>false</code>", "Not needed"],
+    kvsecret: ["Set: the Key Vault reference", "Not needed", "Not needed: store the PFX and password in your own variables"],
+    secret: ["Leave empty (or omit in a clean build)", "Set: the secret value", "Not needed"],
+    authority: ["Keep the default", "Keep the default", "Keep the default"],
+    audience: ["Keep the default", "Keep the default", "Keep the default"]
+  };
+  const RELEVANT = { A: ["tenant", "appreg", "flag", "kvsecret"], B: ["tenant", "appreg", "flag", "secret"], C: ["tenant", "appreg"] };
+  const radios = $$("input[name='secret-option']");
+  const applyOption = (value, save) => {
+    let opt = String(value || "").toUpperCase();
+    if (!RELEVANT[opt]) opt = "A";
+    const idx = "ABC".indexOf(opt);
+    radios.forEach((r) => {
+      r.checked = r.value === opt;
+      const l = r.closest("label");
+      if (l) l.classList.toggle("is-selected", r.checked);
+    });
+    $$("[data-option-panel]").forEach((p) => { p.hidden = p.getAttribute("data-option-panel") !== opt; });
+    $$("[data-step3]").forEach((p) => { p.hidden = p.getAttribute("data-step3") !== opt; });
+    const head = $("#env-col-head");
+    if (head) head.textContent = "With option " + opt;
+    $$("#env-table tr[data-var]").forEach((tr) => {
+      const v = tr.getAttribute("data-var");
+      const cell = $("td[data-col]", tr);
+      if (cell && ENV[v]) cell.innerHTML = ENV[v][idx];
+      if (cell && head) cell.setAttribute("data-label", head.textContent);
+      tr.classList.toggle("is-relevant", RELEVANT[opt].indexOf(v) !== -1);
+    });
+    if (save) store.set(OPT_KEY, opt);
+    return opt;
+  };
+  const hashOption = () => { const m = /^#option-([abc])$/i.exec(location.hash); return m ? m[1].toUpperCase() : null; };
+  const scrollToPanel = (opt) => {
+    const el = document.getElementById("option-" + opt.toLowerCase());
+    if (!el || el.hidden) return;
+    const offset = parseFloat(getComputedStyle(el).scrollMarginTop) || 0;
+    window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - offset, behavior: "auto" });
+  };
+  radios.forEach((r) => r.addEventListener("change", () => {
+    if (!r.checked) return;
+    const opt = applyOption(r.value, true);
+    const h = hashOption();
+    if (h && h !== opt) { try { history.replaceState(null, "", "#option-" + opt.toLowerCase()); } catch (e) { /* ignore */ } }
+    announce("Showing the steps and settings for option " + opt + ".");
+  }));
+  document.addEventListener("click", (e) => {
+    const a = e.target && e.target.closest ? e.target.closest("a[href^='#option-']") : null;
+    const m = a ? /^#option-([abc])$/i.exec(a.getAttribute("href")) : null;
+    if (m) applyOption(m[1], true);
+  });
+  window.addEventListener("hashchange", () => {
+    const h = hashOption();
+    if (!h) return;
+    applyOption(h, true);
+    requestAnimationFrame(() => scrollToPanel(h));
+  });
+  const startHash = hashOption();
+  applyOption(startHash || store.get(OPT_KEY) || "A", !!startHash);
+  if (startHash) window.addEventListener("load", () => requestAnimationFrame(() => scrollToPanel(startHash)), { once: true });
+
+  /* Build progress */
+  const BLD_KEY = "cil-build-v1";
+  const stepBoxes = $$("#build-steps input[type=checkbox][data-step]");
+  const bldSaved = (() => { const v = store.json(BLD_KEY); return Array.isArray(v) ? v.map(String) : []; })();
+  const updateBuild = (save) => {
+    const done = stepBoxes.filter((c) => c.checked);
+    stepBoxes.forEach((c) => { const li = c.closest("li"); if (li) li.classList.toggle("is-done", c.checked); });
+    setProgress("build-bar", done.length, stepBoxes.length, "done");
+    const count = $("#build-count");
+    if (count) count.textContent = done.length + " of " + stepBoxes.length + " done";
+    if (save) store.set(BLD_KEY, JSON.stringify(done.map((c) => c.getAttribute("data-step"))));
+  };
+  stepBoxes.forEach((c) => {
+    c.checked = bldSaved.indexOf(c.getAttribute("data-step")) !== -1;
+    c.addEventListener("change", () => updateBuild(true));
+  });
+  updateBuild(false);
+  const bldReset = $("#build-reset");
+  if (bldReset) bldReset.addEventListener("click", () => {
+    if (!window.confirm("Clear all build progress? This only affects this browser.")) return;
+    stepBoxes.forEach((c) => { c.checked = false; });
+    store.del(BLD_KEY);
+    updateBuild(false);
+    announce("Build progress cleared.");
+  });
+
+  /* Example validation window: the UTC day from four days ago */
+  const today = utcToday();
+  const valStart = $("#val-start"), valEnd = $("#val-end");
+  if (valStart) valStart.textContent = iso(today - 4 * DAY);
+  if (valEnd) valEnd.textContent = iso(today - 3 * DAY);
+
+  /* Backfill helper */
+  const bfFirst = $("#bf-first"), bfLast = $("#bf-last"), bfSplit = $("#bf-split");
+  const bfMsgs = $("#bf-msgs"), bfBody = $("#bf-body"), bfCopy = $("#bf-copy");
+  let bfRuns = [];
+  const lastSunday = (y, m) => { const d = new Date(Date.UTC(y, m + 1, 0)); return d.getUTCDate() - d.getUTCDay(); };
+  const inBST = (t) => {
+    const y = new Date(t).getUTCFullYear();
+    return t >= Date.UTC(y, 2, lastSunday(y, 2), 1) && t < Date.UTC(y, 9, lastSunday(y, 9), 1);
+  };
+  const renderBackfill = () => {
+    if (!bfFirst || !bfLast || !bfMsgs || !bfBody) return;
+    const first = parseDate(bfFirst.value), last = parseDate(bfLast.value);
+    const msgs = [];
+    const add = (kind, html) => msgs.push('<p class="msg msg-' + kind + '">' + html + "</p>");
+    bfRuns = [];
+    if (isNaN(first) || isNaN(last)) {
+      add("warn", "Enter both dates to see the runs.");
+    } else if (last < first) {
+      add("error", "<strong>The last day is before the first day.</strong> Swap the dates.");
+    } else {
+      const days = Math.round((last - first) / DAY) + 1;
+      if (bfSplit && bfSplit.checked) {
+        if (days > 180) add("error", "<strong>That would be " + days + " runs.</strong> The helper lists at most 180. Choose a shorter range; Purview Audit (Standard) keeps only 180 days anyway.");
+        else for (let i = 0; i < days; i++) bfRuns.push([first + i * DAY, first + (i + 1) * DAY]);
+      } else {
+        bfRuns.push([first, last + DAY]);
+        if (days > 7) add("warn", "<strong>One run would cover " + days + " days.</strong> Every run has the same 10-hour paging timeout, so a busy tenant may not finish. Consider <em>One run per day</em>.");
+      }
+      if (bfRuns.length) {
+        const now = Date.now();
+        const start = bfRuns[0][0], end = bfRuns[bfRuns.length - 1][1];
+        if (end > now - 48 * 3600000) add("warn", "<strong>EndDate " + iso(end) + " is less than 48 hours ago,</strong> so Purview may not have every record yet. Make the last day " + iso(today - 3 * DAY) + " or earlier, or run it again later; overlapping runs are safe.");
+        if (start < now - 180 * DAY) add("warn", "<strong>StartDate " + iso(start) + " is more than 180 days ago.</strong> Purview Audit (Standard) keeps 180 days, so the earliest days may return nothing.");
+        if (inBST(start)) add("warn", "<strong>" + iso(start) + " is in British Summer Time,</strong> so the manual flow's window starts at 01:00 UTC, not 00:00, and that day's first hour would be missed. Start one day earlier (first day " + iso(start - DAY) + "); the overlap is harmless.");
+      }
+    }
+    const html = msgs.join("");
+    if (bfMsgs.innerHTML !== html) bfMsgs.innerHTML = html;
+    bfBody.replaceChildren(...bfRuns.map((r, i) => {
+      const tr = document.createElement("tr");
+      [String(i + 1), iso(r[0]), iso(r[1])].forEach((v) => { const td = document.createElement("td"); td.textContent = v; tr.appendChild(td); });
+      return tr;
+    }));
+    if (bfCopy) bfCopy.disabled = !bfRuns.length;
+  };
+  if (bfFirst && !bfFirst.value) bfFirst.value = iso(today - 7 * DAY);
+  if (bfLast && !bfLast.value) bfLast.value = iso(today - 4 * DAY);
+  [bfFirst, bfLast, bfSplit].forEach((el) => {
+    if (!el) return;
+    el.addEventListener("input", renderBackfill);
+    el.addEventListener("change", renderBackfill);
+  });
+  renderBackfill();
+  if (bfCopy) bfCopy.addEventListener("click", () => {
+    if (!bfRuns.length) { announce("There are no runs to copy."); return; }
+    const tsv = ["Run\tStartDate\tEndDate"].concat(bfRuns.map((r, i) => (i + 1) + "\t" + iso(r[0]) + "\t" + iso(r[1]))).join("\n") + "\n";
+    copyWithFeedback(bfCopy, tsv, "Copied " + bfRuns.length + (bfRuns.length === 1 ? " run." : " runs."));
+  });
+
+  /* Troubleshooting filter */
+  const tsFilter = $("#ts-filter");
+  const tsRows = $$("#ts-table tbody tr");
+  const tsNone = $("#ts-none"), tsCount = $("#ts-count");
+  const filterTs = () => {
+    const terms = tsFilter.value.toLowerCase().split(/\s+/).filter(Boolean);
+    let shown = 0;
+    tsRows.forEach((tr) => {
+      const text = tr.textContent.toLowerCase();
+      const hit = terms.every((t) => text.indexOf(t) !== -1);
+      tr.hidden = !hit;
+      if (hit) shown++;
+    });
+    if (tsNone) tsNone.hidden = shown !== 0;
+    if (tsCount) tsCount.textContent = terms.length ? shown + " of " + tsRows.length + " shown" : "";
+  };
+  if (tsFilter) { tsFilter.addEventListener("input", filterTs); filterTs(); }
+
+
+  /* Screenshot lightbox */
+  const lb = $("#lightbox");
+  if (lb && typeof lb.showModal === "function") {
+    const lbImg = $("#lightbox-img");
+    const lbCap = $("#lightbox-cap");
+    let lbOpener = null;
+    document.addEventListener("click", (e) => {
+      const a = e.target.closest && e.target.closest("a[data-lightbox]");
+      if (!a || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+      e.preventDefault();
+      const thumb = a.querySelector("img");
+      const cap = a.closest("figure") ? a.closest("figure").querySelector("figcaption") : null;
+      lbImg.src = a.href;
+      lbImg.alt = thumb ? thumb.alt : "";
+      lbCap.textContent = cap ? cap.textContent.replace(/\s+/g, " ").trim() : (thumb ? thumb.alt : "");
+      lbOpener = a;
+      lb.showModal();
+    });
+    lb.addEventListener("click", (e) => { if (e.target === lb) lb.close(); });
+    lb.addEventListener("close", () => {
+      lbImg.removeAttribute("src");
+      if (lbOpener) lbOpener.focus();
+      lbOpener = null;
+    });
+  }
+})();
+</script>
+
+</body>
+</html>

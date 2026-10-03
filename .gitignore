@@ -1,0 +1,22 @@
+# Local configuration and secrets
+.env
+.env.*
+*.local
+
+# Exported data
+data/
+exports/
+
+# Never publish solution packages, flow exports or reports
+*.zip
+*.pbix
+*.pbit
+*.msapp
+solution/
+releases/
+
+# Build output and temporary files
+bin/
+obj/
+*.binlog
+*.tmp.zip
