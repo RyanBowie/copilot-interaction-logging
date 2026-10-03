@@ -1,12 +1,12 @@
 <!doctype html>
-<html lang="en-GB">
+<html lang="en-GB" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <script>
   (() => {
     const param = new URLSearchParams(window.location.search).get("scoutTheme");
     const theme =
-      param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      param === "light" ? "light" : "dark";
     document.documentElement.setAttribute("data-theme", theme);
   })();
 </script>
@@ -22,7 +22,7 @@
   })();
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="light dark">
+<meta name="color-scheme" content="dark light">
 <title>Copilot Interaction Logging · Purview audit data in Dataverse</title>
 <meta name="description" content="Documentation-only build guide for copying Microsoft 365 Copilot interaction metadata from the Purview unified audit log into Dataverse with Power Automate and Microsoft Graph. Read the security warning, approval checklist and secret-handling options before you build.">
 <meta property="og:title" content="Copilot Interaction Logging">
@@ -39,60 +39,108 @@
 <meta name="twitter:description" content="Build guide: collect Purview Copilot interaction audit logs into Dataverse for usage reporting, with an explicit secret-handling decision for builders.">
 <meta name="twitter:image" content="https://ryanbowie.github.io/copilot-interaction-logging/images/og.png">
 <!-- dl-meta:end -->
-<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2028%2028'%3E%3Crect%20width='28'%20height='28'%20rx='7'%20fill='%23b11f4b'/%3E%3Cpath%20d='M8%209h12M8%2014h12M8%2019h7'%20fill='none'%20stroke='%23fff'%20stroke-width='2.5'%20stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2028%2028'%3E%3Crect%20width='28'%20height='28'%20rx='7'%20fill='%237653ae'/%3E%3Cpath%20d='M8%209h12M8%2014h12M8%2019h7'%20fill='none'%20stroke='%23fff'%20stroke-width='2.5'%20stroke-linecap='round'/%3E%3C/svg%3E">
 <style>
 :root {
   color-scheme: light;
-  --cp-bg: #f7f4ef;
-  --cp-bg-elevated: #fcfbf8;
+  --cp-bg: #f2f2f8;
+  --cp-bg-elevated: #f8f7fc;
   --cp-surface: #ffffff;
-  --cp-surface-soft: #f5f5f5;
-  --cp-border: #dedede;
-  --cp-border-strong: #919191;
-  --cp-text: #242424;
-  --cp-text-muted: #5c5c5c;
-  --cp-text-soft: #6f6f6f;
-  --cp-accent: #b11f4b;
-  --cp-accent-hover: #9a1a41;
-  --cp-accent-soft: rgba(177, 31, 75, 0.08);
+  --cp-surface-soft: #f2f2f8;
+  --cp-border: #e3dfed;
+  --cp-border-strong: #9285aa;
+  --cp-text: #102631;
+  --cp-text-muted: #52637a;
+  --cp-text-soft: #667287;
+  --cp-accent: #7653ae;
+  --cp-accent-hover: #58378b;
+  --cp-accent-soft: #eee8f7;
   --cp-accent-fg: #ffffff;
-  --cp-success: #16a34a;
-  --cp-danger: #dc2626;
-  --cp-warning: #f59e0b;
-  --cp-link: #0078d4;
+  --cp-success: #207346;
+  --cp-danger: #b4233e;
+  --cp-warning: #8c6208;
+  --cp-link: #066bc7;
   --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
   --cp-overlay: rgba(255, 255, 255, 0.8);
   --cp-panel: rgba(255, 255, 255, 0.86);
   --cp-panel-strong: rgba(255, 255, 255, 0.96);
   --cp-sheen: rgba(255, 255, 255, 0.55);
-  --cp-highlight: rgba(177, 31, 75, 0.12);
+  --cp-highlight: rgba(118, 83, 174, 0.12);
+  --cp-chart-blue: #0877dd;
+  --cp-chart-indigo: #5364ba;
+  --cp-chart-purple: #7653ae;
+  --cp-chart-violet: #9651bb;
+  --cp-chart-magenta: #b535c3;
+  --cp-transparent: transparent;
 }
 
 html[data-theme="dark"] {
   color-scheme: dark;
-  --cp-bg: #3d3b3a;
-  --cp-bg-elevated: #343231;
-  --cp-surface: #292929;
-  --cp-surface-soft: #2e2e2e;
-  --cp-border: #474747;
-  --cp-border-strong: #5f5f5f;
-  --cp-text: #dedede;
-  --cp-text-muted: #919191;
-  --cp-text-soft: #b0b0b0;
-  --cp-accent: #fd8ea1;
-  --cp-accent-hover: #fb7b91;
-  --cp-accent-soft: rgba(253, 142, 161, 0.14);
-  --cp-accent-fg: #1a1a1a;
+  --cp-bg: #171717;
+  --cp-bg-elevated: #222222;
+  --cp-surface: #1f1f1f;
+  --cp-surface-soft: #262626;
+  --cp-border: #3b3b3b;
+  --cp-border-strong: #858585;
+  --cp-text: #f2f2f2;
+  --cp-text-muted: #bdbdbd;
+  --cp-text-soft: #aaaaaa;
+  --cp-accent: #c3a0ef;
+  --cp-accent-hover: #debeff;
+  --cp-accent-soft: #2b2b2b;
+  --cp-accent-fg: #181818;
   --cp-success: #4ade80;
   --cp-danger: #f87171;
   --cp-warning: #fbbf24;
-  --cp-link: #4da6ff;
+  --cp-link: #80baff;
   --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
-  --cp-overlay: rgba(41, 41, 41, 0.88);
-  --cp-panel: rgba(41, 41, 41, 0.72);
-  --cp-panel-strong: rgba(41, 41, 41, 0.96);
+  --cp-overlay: rgba(31, 31, 31, 0.88);
+  --cp-panel: rgba(31, 31, 31, 0.72);
+  --cp-panel-strong: rgba(31, 31, 31, 0.96);
   --cp-sheen: rgba(255, 255, 255, 0.04);
-  --cp-highlight: rgba(253, 142, 161, 0.12);
+  --cp-highlight: rgba(195, 160, 239, 0.12);
+  --cp-chart-blue: #69aeff;
+  --cp-chart-indigo: #98a5ff;
+  --cp-chart-purple: #bc98ed;
+  --cp-chart-violet: #d097ee;
+  --cp-chart-magenta: #ed8fea;
+  --cp-transparent: transparent;
+}
+
+/* Print on paper colours whichever theme is showing. */
+@media print {
+  html[data-theme="dark"] {
+    color-scheme: light;
+    --cp-bg: #f2f2f8;
+    --cp-bg-elevated: #f8f7fc;
+    --cp-surface: #ffffff;
+    --cp-surface-soft: #f2f2f8;
+    --cp-border: #e3dfed;
+    --cp-border-strong: #9285aa;
+    --cp-text: #102631;
+    --cp-text-muted: #52637a;
+    --cp-text-soft: #667287;
+    --cp-accent: #7653ae;
+    --cp-accent-hover: #58378b;
+    --cp-accent-soft: #eee8f7;
+    --cp-accent-fg: #ffffff;
+    --cp-success: #207346;
+    --cp-danger: #b4233e;
+    --cp-warning: #8c6208;
+    --cp-link: #066bc7;
+    --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
+    --cp-overlay: rgba(255, 255, 255, 0.8);
+    --cp-panel: rgba(255, 255, 255, 0.86);
+    --cp-panel-strong: rgba(255, 255, 255, 0.96);
+    --cp-sheen: rgba(255, 255, 255, 0.55);
+    --cp-highlight: rgba(118, 83, 174, 0.12);
+    --cp-chart-blue: #0877dd;
+    --cp-chart-indigo: #5364ba;
+    --cp-chart-purple: #7653ae;
+    --cp-chart-violet: #9651bb;
+    --cp-chart-magenta: #b535c3;
+    --cp-transparent: transparent;
+  }
 }
 
 :root {
@@ -377,7 +425,11 @@ dialog#lightbox::backdrop { background: var(--cp-overlay); }
 .hero { position: relative; isolation: isolate; margin-top: 20px; padding: 48px 28px 32px; }
 .hero::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; border: 1px solid var(--cp-border); border-radius: var(--radius-card); background-color: var(--cp-bg-elevated); background-image: radial-gradient(circle, color-mix(in srgb, var(--cp-border-strong) 45%, transparent) 1px, transparent 1.6px); background-size: 20px 20px; -webkit-mask-image: linear-gradient(to bottom, var(--cp-text) 60%, transparent); mask-image: linear-gradient(to bottom, var(--cp-text) 60%, transparent); }
 .hero::after { content: ""; position: absolute; top: -5px; left: -5px; right: -5px; height: 18px; z-index: -1; pointer-events: none; background: linear-gradient(var(--cp-accent), var(--cp-accent)) left top / 18px 2px no-repeat, linear-gradient(var(--cp-accent), var(--cp-accent)) left top / 2px 18px no-repeat, linear-gradient(var(--cp-accent), var(--cp-accent)) right top / 18px 2px no-repeat, linear-gradient(var(--cp-accent), var(--cp-accent)) right top / 2px 18px no-repeat; }
-.hero h1::after { content: ""; display: block; width: 64px; height: 4px; margin-top: 14px; border-radius: 2px; background: var(--cp-accent); transform-origin: left center; animation: dl-grow 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.hero h1 { width: fit-content; max-width: 100%; color: var(--cp-chart-blue); }
+@supports ((background-clip: text) or (-webkit-background-clip: text)) {
+  .hero h1 { background: linear-gradient(105deg, var(--cp-chart-blue), var(--cp-chart-purple) 56%, var(--cp-chart-magenta)); -webkit-background-clip: text; background-clip: text; color: var(--cp-transparent); -webkit-text-fill-color: var(--cp-transparent); }
+}
+.hero h1::after { content: ""; display: block; width: 64px; height: 4px; margin-top: 14px; border-radius: 2px; background: linear-gradient(90deg, var(--cp-chart-blue), var(--cp-chart-purple), var(--cp-chart-magenta)); transform-origin: left center; animation: dl-grow 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
 @keyframes dl-grow { from { transform: scaleX(0); } }
 
 /* Signal diagram in the hero */
@@ -422,7 +474,7 @@ main { counter-reset: dlch; }
 .section-kicker::before { counter-increment: dlch; content: counter(dlch, decimal-leading-zero) " · "; content: counter(dlch, decimal-leading-zero) " · " / ""; color: var(--cp-text-soft); font-family: var(--mono); }
 
 /* Reading progress and reveal on scroll (motion only when allowed; see the script) */
-#dl-progress { position: fixed; z-index: 60; top: 0; left: 0; width: 100%; height: 3px; background: var(--cp-accent); transform: scaleX(var(--dl-p, 0)); transform-origin: 0 50%; pointer-events: none; }
+#dl-progress { position: fixed; z-index: 60; top: 0; left: 0; width: 100%; height: 3px; background: linear-gradient(90deg, var(--cp-chart-blue), var(--cp-chart-purple), var(--cp-chart-magenta)); transform: scaleX(var(--dl-p, 0)); transform-origin: 0 50%; pointer-events: none; }
 html.dl-motion .dl-reveal { opacity: 0; transform: translateY(16px); transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1); }
 html.dl-motion .dl-reveal.dl-in { opacity: 1; transform: none; }
 
@@ -445,7 +497,13 @@ html.dl-motion .dl-reveal.dl-in { opacity: 1; transform: none; }
 .dl-here { align-self: flex-start; margin-top: auto; padding: 2px 10px; border-radius: 999px; background: var(--cp-accent); color: var(--cp-accent-fg); font: 700 0.7rem/1.6 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
 
 @media (max-width: 600px) { .hero { padding: 36px 14px 20px; } .dl-series { padding: 18px 14px; } }
+@media (forced-colors: active) {
+  .hero h1 { background: none; color: CanvasText; -webkit-text-fill-color: CanvasText; }
+  .hero h1::after, #dl-progress { forced-color-adjust: none; background: Highlight; }
+}
 @media print {
+  .hero h1 { background: none; color: var(--cp-text); -webkit-text-fill-color: currentColor; }
+  .hero h1::after { background: var(--cp-accent); }
   #dl-progress, .hero::before, .hero::after, .shot-btn::before, .shot a[data-lightbox]::before, .dl-wide::before { display: none; }
   .dl-more { -webkit-mask-image: none; mask-image: none; }
   .hero { margin-top: 0; padding: 24px 0 0; }
@@ -1208,7 +1266,7 @@ html.dl-motion .dl-reveal.dl-in { opacity: 1; transform: none; }
         <li><strong>Agents</strong>, by <strong>Agent Id</strong> and <strong>Agent Platform</strong>, joined to your own agent inventory.</li>
         <li><strong>Collection health</strong> from the run log and error rows, including days with no rows (see <a href="#failures">Failure states</a>).</li>
       </ul>
-      <p>For a fuller example that combines this data with agent inventory from several platforms, see <a href="https://github.com/RyanBowie/custom-agent-reporting-architecture">Custom Agent Reporting – Architecture</a>.</p>
+      <p>For a fuller example that combines this data with agent inventory from several platforms, see <a href="https://github.com/RyanBowie/custom-agent-reporting-architecture">Custom Agent Reporting – Architecture</a>. There, these tables sit in one reporting environment alongside the other collectors' tables, so its Power BI model reads them all through a single Dataverse connection. If you build both, put them in the same environment.</p>
     </section>
 
     <section class="section" id="failures" aria-labelledby="failures-h">
@@ -1516,16 +1574,6 @@ html.dl-motion .dl-reveal.dl-in { opacity: 1; transform: none; }
     syncThemeLabel();
   });
   syncThemeLabel();
-  if (window.matchMedia && !new URLSearchParams(location.search).has("scoutTheme")) {
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const onScheme = (e) => {
-      const saved = store.get("cil-theme");
-      if (saved === "light" || saved === "dark") return;
-      root.setAttribute("data-theme", e.matches ? "dark" : "light");
-      syncThemeLabel();
-    };
-    if (mq.addEventListener) mq.addEventListener("change", onScheme); else if (mq.addListener) mq.addListener(onScheme);
-  }
 
   /* Scrollspy for the side contents and the chip bar */
   const sections = $$("main section[id]");
