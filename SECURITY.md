@@ -22,7 +22,7 @@ You own, secure and maintain whatever you build from the guide.
 Read [Read this first](README.md#read-this-first-high-privilege-tenant-wide-access) in the README before you build. In short:
 
 - **High-privilege identity.** The flows sign in as an app registration with the Microsoft Graph **application** permission `AuditLogsQuery.Read.All`. It reads the audit log for every workload in the tenant, and it can't be scoped down. Protect the credential like a privileged admin credential.
-- **Secret storage is your decision.** Azure Key Vault (option A) is recommended. A plain-text environment variable (option B) is readable by environment admins and customisers. Its current value is **exported in clear text** if it's in the solution. See [the secret-handling decision](README.md#secret-handling-decision-how-the-client-secret-is-stored).
+- **Secret storage is your decision.** Azure Key Vault (option A) is recommended. A plain-text environment variable (option B, not recommended) is readable by environment admins and customisers. Its current value is **exported in clear text** if it's in the solution. See [the secret-handling decision](README.md#secret-handling-decision-how-the-client-secret-is-stored).
 - **Personal data.** The collected rows hold UPNs, client IP addresses, regions and accessed-resource names. Limit who can read the tables and the flow run history.
 - **Run history.** In the reference build, the HTTP actions' outputs and the per-record actions aren't secured. Raw audit records are therefore visible in run history for 28 days. Secure them in your build: see **Run-history exposure** under [Limitations](README.md#limitations).
 
@@ -30,5 +30,5 @@ Read [Read this first](README.md#read-this-first-high-privilege-tenant-wide-acce
 
 - Set an expiry on the client secret, name an owner and plan rotation.
 - Monitor the app's sign-ins, and consider Conditional Access for workload identities.
-- Before you share or commit an export of your build, remove every environment-variable *current value* from the solution and inspect the exported files. See [Export hygiene (ALM)](README.md#export-hygiene-alm).
+- Before you share or commit an export of your build, remove every environment-variable *current value* from the solution, then unzip the export and check that no secret, tenant ID, client ID or email address remains.
 - If a secret is exposed, delete it from the app registration straight away, create a new one, and review the app's sign-in logs.

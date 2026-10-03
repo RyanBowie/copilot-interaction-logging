@@ -7,7 +7,7 @@
 >
 > - **Tested** marks behaviour observed in a sandbox. **From the design (not live-tested)** marks behaviour that the flow definition implies but that was not exercised.
 > - The reference build calls the Microsoft Graph **beta** audit log query API. For a new build, use v1.0 and validate it first. See [Switching to v1.0](#switching-to-v10).
-> - Secret handling is your decision: Azure Key Vault (recommended) or a plain-text environment variable. Both paths are described below.
+> - Secret handling is your decision: Azure Key Vault (recommended) or a plain-text environment variable (not recommended). Both paths are described below.
 
 The build guide is in the [README](../README.md). This page explains **what every action does and why it exists**, so that you can rebuild the flows, simplify them, or troubleshoot your own version.
 
@@ -80,7 +80,7 @@ The pattern is the same: an app registration, a scheduled flow that creates a Mi
 
 - It collects only `CopilotInteraction` records and writes them to its own table.
 - It logs every run (Copilot Interaction Flow Runs) and every failure (Copilot Interaction Flow Run Errors).
-- It lets you choose between an Azure Key Vault secret and a plain-text environment variable for the app secret.
+- It lets you choose between an Azure Key Vault secret and a plain-text environment variable (not recommended) for the app secret.
 - It ends the run as **Failed** with a clear message when collection is incomplete, instead of finishing silently.
 - It adds a manual flow to back-fill a date range.
 
@@ -237,7 +237,7 @@ Phase A sets the collection window and creates every variable the run uses. Powe
 The HTTP actions need the client secret of the app registration. Phase B decides where that secret comes from, based on the `Audit_UsingAKVtruefalse` environment variable:
 
 - **`true`:** the secret is read from Azure Key Vault through a Dataverse environment variable of type **Secret** (`KeyVaultSecret`). The secret value never appears in an environment variable or solution file.
-- **Anything else (default `false`):** the secret is taken from the plain-text environment variable `Audit_Secret`. This is simpler to set up, but anyone who can read environment variables in the environment can read the secret.
+- **Anything else (default `false`):** the secret is taken from the plain-text environment variable `Audit_Secret`. This is simpler to set up, but anyone who can read environment variables in the environment can read the secret. Not recommended.
 
 Which option to use is your decision. The README explains the trade-offs. Only the plain-text path was live-tested in the reference build. Validate the Key Vault path in your sandbox, and see [Use Azure Key Vault secrets](https://learn.microsoft.com/power-apps/maker/data-platform/environmentvariables-azure-key-vault-secrets#create-a-power-automate-flow-to-test-the-environment-variable-secret) for the prerequisites.
 
@@ -558,9 +558,9 @@ In code view, the `authentication` property of each HTTP action is:
 For every field, see [Active Directory OAuth authentication](https://learn.microsoft.com/azure/logic-apps/logic-apps-securing-a-logic-app#active-directory-oauth-oauth-20-with-microsoft-entra-id-authentication). All three HTTP actions have secure inputs turned on, so the secret and the token request are hidden in run history. Keep them on. See [Securing run history](#securing-run-history).
 
 > [!TIP]
-> **Prefer a certificate in production.** Microsoft recommends "that you use a certificate instead of a client secret before moving the application to a production environment". To use one, set **Credential Type** to Certificate. Then set **Pfx** to "The base64-encoded content from a Personal Information Exchange (PFX) file", and set **Password** to the certificate's password. In PowerShell 7 you can get the base64 text like this:
+> **Prefer a certificate in production.** Microsoft recommends "that you use a certificate instead of a client secret before moving the application to a production environment". To use one, set **Credential Type** to Certificate. Then set **Pfx** to "The base64-encoded content from a Personal Information Exchange (PFX) file", and set **Password** to the certificate's password. In a terminal you can get the base64 text like this:
 >
-> ```powershell
+> ```
 > [System.Convert]::ToBase64String([System.IO.File]::ReadAllBytes('c:\certificate.pfx'))
 > ```
 >
@@ -645,7 +645,7 @@ In code view, a flow refers to an environment variable by its display name follo
 | `poc_Audit_Audience` | Audit_Audience | Text | `https://graph.microsoft.com` | **Audience** in the HTTP actions | **Keep.** Optionally build the three Graph URLs from it, so that a change of cloud is one edit. |
 | `poc_Audit_UsingAKVtruefalse` | Audit_UsingAKVtruefalse | Text | `false` | The switch in [Phase B](#phase-b-resolve-the-graph-secret). Only `true` selects Key Vault. | **Change.** Normalise the value with `toLower(trim(...))`, or use Two options. |
 | `poc_KeyVaultSecret` | KeyVaultSecret | Secret | (none) | The Key Vault reference for the client secret | **Keep** if you use Key Vault |
-| `poc_Audit_Secret` | Audit_Secret | Text | (none) | The client secret in plain text | **Keep** only if you choose plain text |
+| `poc_Audit_Secret` | Audit_Secret | Text | (none) | The client secret in plain text | **Keep** only if you choose plain text (not recommended) |
 | `poc_AuditMinutestoLookBack` | Audit - Minutes to Look Back | Decimal number | 65 | The legacy Composes in Phase A only | **Legacy** |
 | `poc_AuditEndTimeMinutesAgo` | Audit - End Time Minutes Ago | Decimal number | 2820 | The legacy Composes in Phase A only | **Legacy** |
 | `poc_Audit_ReviewerEmail` | Audit_ReviewerEmail | Text | (none) | Nothing. Its description is "Email to review flow runs". | **Legacy** |
@@ -654,7 +654,7 @@ In code view, a flow refers to an environment variable by its display name follo
 
 Where the client secret lives is your decision. The README sets out the trade-offs. Whichever you choose, keep secure inputs turned on for `Resolve_Graph_Secret` and the HTTP actions.
 
-**Plain text (`Audit_Secret`).** The value is stored as plain text in Dataverse. Anyone who can read environment variable values in the environment can read it, and so can anyone who opens a solution export that includes the value.
+**Plain text (`Audit_Secret`). Not recommended.** The value is stored as plain text in Dataverse. Anyone who can read environment variable values in the environment can read it, and so can anyone who opens a solution export that includes the value.
 
 - Leave the **Default value** empty. It's part of the variable's definition, so it's exported with the solution.
 - Enter the secret as the **Current value**. Then open the variable and, under **Current Value**, select **...** > **Remove from this solution**, so that exports don't include it. Microsoft notes: "The default value is used if there's no current value."

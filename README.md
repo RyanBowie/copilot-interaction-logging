@@ -2,7 +2,7 @@
 
 [![Copilot Interaction Logging: collect Copilot interaction metadata from the Purview audit log into Dataverse with two Power Automate flows](docs/images/og.png)](https://ryanbowie.github.io/copilot-interaction-logging/)
 
-> **Community project. This is not a Microsoft product.** It is a personal project shared as-is under the [MIT licence](LICENSE). Microsoft does not support it, and no SLA or warranty applies. Read the whole of this page, then build and test in a non-production environment and get the approvals listed below **before** you build it anywhere that holds real data.
+> **Community project. This is not a Microsoft product.** It is a personal project shared as-is under the [MIT licence](LICENSE). Microsoft does not support it, and no SLA or warranty applies. Read the whole of this page, then build and test in a non-production environment and get the approvals described in [Read this first](#read-this-first-high-privilege-tenant-wide-access) from your security and privacy owners **before** you build it anywhere that holds real data.
 
 Copilot Interaction Logging is a build guide. It shows how to collect **metadata** about Microsoft 365 Copilot and Copilot Studio interactions from the Microsoft Purview unified audit log into Dataverse, using two Power Automate cloud flows and the Microsoft Graph audit log query API. From Dataverse you can report on usage with Power BI or any Dataverse client.
 
@@ -18,19 +18,18 @@ The build collects no prompt or response text.
 - [What you build](#what-you-build)
 - [Read this first: high-privilege, tenant-wide access](#read-this-first-high-privilege-tenant-wide-access)
 - [Do you need this? Built-in options first](#do-you-need-this-built-in-options-first)
-- [Approval checklist (before you build)](#approval-checklist-before-you-build)
 - [Prerequisites and permissions](#prerequisites-and-permissions)
 - [How it works](#how-it-works)
+- [The HTTP calls](#the-http-calls)
 - [Secret-handling decision: how the client secret is stored](#secret-handling-decision-how-the-client-secret-is-stored)
 - [Environment variables](#environment-variables)
-- [Build steps](#build-steps)
+- [Build from scratch](#build-from-scratch)
 - [Data model](#data-model)
 - [Reporting](#reporting)
 - [Failure states and monitoring](#failure-states-and-monitoring)
 - [Operations](#operations)
 - [Troubleshooting](#troubleshooting)
 - [Limitations](#limitations)
-- [Export hygiene (ALM)](#export-hygiene-alm)
 - [Origins and credit](#origins-and-credit)
 - [Related](#related)
 - [Licence](#licence)
@@ -40,15 +39,15 @@ The build collects no prompt or response text.
 | Component | What it is | Details |
 | --- | --- | --- |
 | App registration | A Microsoft Entra ID app with the Microsoft Graph **application** permission `AuditLogsQuery.Read.All` | [Graph permissions](docs/ACTION_REFERENCE.md#graph-permissions) |
-| Client secret store | Azure Key Vault (recommended) or a plain-text environment variable. **You decide.** | [Secret-handling decision](#secret-handling-decision-how-the-client-secret-is-stored) |
+| Client secret store | Azure Key Vault (recommended) or a plain-text environment variable (not recommended). **You decide.** | [Secret-handling decision](#secret-handling-decision-how-the-client-secret-is-stored) |
 | Dataverse tables | Copilot Interactions, Copilot Interaction Flow Runs and Copilot Interaction Flow Run Errors | [Data model](#data-model) |
 | Environment variables | Seven, plus three legacy ones to leave out | [Environment variables](#environment-variables) |
-| Connection reference | One, for Microsoft Dataverse | [Build steps](#build-steps) |
+| Connection reference | One, for Microsoft Dataverse | [Build from scratch](#build-from-scratch) |
 | Scheduled flow | Runs daily and collects one UTC day from four days ago. 85 actions in the reference build. | [Action reference](docs/ACTION_REFERENCE.md) |
 | Manual flow | Back-fills a date range you choose. 81 actions in the reference build. | [The manual flow](docs/ACTION_REFERENCE.md#the-manual-flow) |
 | Report | Your own, for example Power BI with the Dataverse connector | [Reporting](#reporting) |
 
-Build everything inside one Dataverse solution in a development environment, then promote it as a managed solution (see [Build steps](#build-steps)).
+Build everything inside one Dataverse solution in a development environment, then promote it as a managed solution (see [Build from scratch](#build-from-scratch)).
 
 ## Read this first: high-privilege, tenant-wide access
 
@@ -61,6 +60,9 @@ Build everything inside one Dataverse solution in a development environment, the
 > - **Flow run history can show raw audit records.** In the reference build, the HTTP actions' *outputs* and the per-record actions aren't secured. Flow owners, co-owners and environment admins can therefore read the raw Graph responses and each record's values, including UPNs and IP addresses, for the run-history retention period (28 days by default). In your build, secure them as described in [Securing run history](docs/ACTION_REFERENCE.md#securing-run-history).
 
 The app registration needs only `AuditLogsQuery.Read.All`. Microsoft Graph offers workload-scoped variants such as `AuditLogsQuery-Exchange.Read.All` and `AuditLogsQuery-SharePoint.Read.All`, but none is documented as covering Copilot interaction records, and the reference build hasn't been tested with them. `AuditLog.Read.All` is **not** enough for the audit log query API. See [Graph permissions](docs/ACTION_REFERENCE.md#graph-permissions), the [API permissions](https://learn.microsoft.com/graph/api/security-auditcoreroot-post-auditlogqueries?view=graph-rest-beta) and the [permissions reference](https://learn.microsoft.com/graph/permissions-reference).
+
+> [!IMPORTANT]
+> **Get approval before you build.** Your security and privacy owners should approve the app registration, the admin consent for `AuditLogsQuery.Read.All` and the [secret-handling option](#secret-handling-decision-how-the-client-secret-is-stored) before anyone creates them. Also confirm that a [built-in option](#do-you-need-this-built-in-options-first), such as Microsoft Sentinel's `CopilotActivity` table or Purview Audit search, doesn't already meet the need.
 
 ## Do you need this? Built-in options first
 
@@ -78,25 +80,6 @@ Microsoft already provides several supported ways to see Copilot activity. Check
 **This build fits a narrower need.** It suits you when you want per-interaction rows in **your own Dataverse environment**, for example to join with your own agent inventory in Power BI or to keep summaries beyond your audit retention, and none of the options above is practical.
 
 Prompts and responses aren't held in the audit log. They're stored in users' mailboxes and are subject to your retention and eDiscovery controls ([Copilot audit logs](https://learn.microsoft.com/purview/audit-copilot)).
-
-## Approval checklist (before you build)
-
-Agree each of these with the right owner before you build in, or deploy to, any environment that holds real data. The [documentation site](https://ryanbowie.github.io/copilot-interaction-logging/#checklist) has an interactive version you can copy into a change request.
-
-- [ ] **Privacy:** a DPIA or privacy review covers UPNs, IP addresses, regions and accessed-resource names for every Copilot user.
-- [ ] **Security:** someone has approved an app registration with tenant-wide `AuditLogsQuery.Read.All`.
-- [ ] **Consent:** a Privileged Role Administrator or Global Administrator is available to grant admin consent ([grant admin consent](https://learn.microsoft.com/entra/identity/enterprise-apps/grant-admin-consent), [role reference](https://learn.microsoft.com/entra/identity/role-based-access-control/permissions-reference)).
-- [ ] **Secret handling:** an option from [the secret-handling decision](#secret-handling-decision-how-the-client-secret-is-stored) is agreed with security. Key Vault is recommended.
-- [ ] **Credential lifecycle:** there's a named owner, an expiry date and a rotation process ([add credentials](https://learn.microsoft.com/entra/identity-platform/how-to-add-credentials)).
-- [ ] **Workload identity controls:** the app's sign-ins are monitored ([sign-in logs](https://learn.microsoft.com/entra/identity/monitoring-health/concept-sign-ins)), and Conditional Access for workload identities is considered ([workload identities](https://learn.microsoft.com/entra/identity/conditional-access/workload-identity)).
-- [ ] **Environment:** a dedicated Dataverse environment with restricted membership is chosen ([environments](https://learn.microsoft.com/power-platform/admin/environments-overview), [database security](https://learn.microsoft.com/power-platform/admin/database-security)).
-- [ ] **Data access:** report readers get a custom read-only security role for the three tables ([security roles](https://learn.microsoft.com/power-platform/admin/security-roles-privileges)). This guide includes no role.
-- [ ] **Retention:** a retention period is agreed and a bulk-delete job is planned ([bulk delete](https://learn.microsoft.com/power-platform/admin/delete-bulk-records)).
-- [ ] **Licensing and request limits:** the flow owner has a premium Power Automate licence, because the flows use the premium HTTP and Dataverse connectors ([licence types](https://learn.microsoft.com/power-platform/admin/power-automate-licensing/types), [FAQ](https://learn.microsoft.com/power-platform/admin/power-automate-licensing/faqs)). For a busy tenant, the expected daily volume is checked against the [Power Platform request limits](https://learn.microsoft.com/power-platform/admin/api-request-limits-allocations#request-limits-in-power-automate), and a Process licence for the scheduled flow is considered (see [Limitations](#limitations)).
-- [ ] **DLP:** the environment's data policy allows the HTTP and Microsoft Dataverse connectors to be used together ([data policies](https://learn.microsoft.com/power-platform/admin/wp-data-loss-prevention)).
-- [ ] **Capacity:** Dataverse database capacity is checked ([capacity](https://learn.microsoft.com/power-platform/admin/capacity-storage)).
-- [ ] **Operations owner:** someone owns the build, watches for failed runs and back-fills gaps (see [Operations](#operations)).
-- [ ] **Testing:** the build is tested in a non-production environment first, using the [clean-build checklist](docs/ACTION_REFERENCE.md#clean-build-checklist).
 
 ## Prerequisites and permissions
 
@@ -178,12 +161,83 @@ Phases D1 to D4 sit inside one scope, `Get_Logs`. The scheduled flow has 85 acti
 
 Details, and how to size the limits for your volumes: [Loop limits](docs/ACTION_REFERENCE.md#loop-limits) and [Planning for high volumes](docs/ACTION_REFERENCE.md#planning-for-high-volumes).
 
+## The HTTP calls
+
+Three HTTP actions do all the talking to Microsoft Graph. `AuditLogQuery` creates an audit log query, `AuditLogQueryStatus` waits for it to finish, and `AuditLogRecords` reads its records a page at a time. This section shows what each one sends and what the Parse JSON action after it expects back. The flows use no Graph connector: the HTTP actions sign in on their own.
+
+**How each call signs in.** All three actions use **Active Directory OAuth** to get an app-only token, so no user signs in and no connection is needed.
+
+| Field | Value |
+| --- | --- |
+| Authority | `Audit_Authority`, default `https://login.windows.net` |
+| Tenant | `Audit_Tenant`: your directory (tenant) ID |
+| Audience | `Audit_Audience`, default `https://graph.microsoft.com` |
+| Client ID | `Audit_AppRegID` |
+| Credential type | Secret, from the output of `Resolve_Graph_Secret` (option A or B), or Certificate (option C) |
+
+Turn on secure inputs for all three actions, so the secret and the token request stay out of run history.
+
+**What the app registration needs.** The Microsoft Graph **application** permission `AuditLogsQuery.Read.All`, with admin consent. Tested on the beta endpoint, it covers all three calls. `AuditLog.Read.All` isn't enough. Moving to v1.0 is untested: see [Switching to v1.0](docs/ACTION_REFERENCE.md#switching-to-v10).
+
+| Step | Request | Success and retries | What happens with the response |
+| --- | --- | --- | --- |
+| **D1** `AuditLogQuery` | `POST …/security/auditLog/queries` with the JSON body below | `201 Created`. Wrapped in `RetryLogic-StartAuditLogQuery`: up to 5 attempts or 5 minutes, waiting 20 seconds after a failure. | `ParseBody_2` reads the new query's `id`. `Set-AuditLogQueryID` keeps it, and `Set-InitialAuditLogQueryRecordsURL` builds the first page's URL: `…/queries/{query-id}/records?$top=500`. |
+| **D2** `AuditLogQueryStatus` | `GET …/security/auditLog/queries/{query-id}`, no body | `WaitUntilQueryFinished` asks every 60 seconds until the status is `succeeded`: up to 480 checks or 8 hours (manual flow: 300 checks or 3 hours). | `ParseBody-QueryStatus` reads `status`: `notStarted`, `running`, `succeeded`, `failed` or `cancelled`. |
+| **D3** `AuditLogRecords` | `GET {records URL}`, no body and no extra headers. The first URL comes from D1; each later one is the previous page's `@odata.nextLink`. | `200 OK`. Wrapped in `RetryLogic-AuditLogRecords`: up to 5 attempts or 10 minutes, waiting 30 seconds after a failure. The outer loop, `ProcessAuditLogRecords`, makes one pass per page: up to 100 pages (manual flow: 1,000) or 10 hours. | `ParseBody-AuditLogRecords` reads `value`, an array of up to 500 records, and `@odata.nextLink`. D4 upserts each record, then copies the link into the records URL. The last page has no link, so the loop ends (tested with 550 records over two pages). |
+
+`…` stands for `https://graph.microsoft.com/beta`. Placeholders in braces are filled in by the flow at run time.
+
+**The D1 request body.** The two variables hold the one-day window that phase A works out; the end time is exclusive. Filtering on the record type and the operation keeps the query to Copilot interactions. This `recordTypeFilters` value works on beta only; v1.0 has no such member.
+
+```json
+{
+  "filterStartDateTime": "@{variables('startTime')}",
+  "filterEndDateTime": "@{variables('endTime')}",
+  "recordTypeFilters": ["CopilotInteraction"],
+  "operationFilters": ["CopilotInteraction"]
+}
+```
+
+**A records schema that won't stall paging.** The reference schema marks 13 properties of each record as required. One record that lacks any of them, or has `null` in a typed one, fails Parse JSON: the page isn't written, the URL doesn't move on, and the same page is read again until the loop limits. Requiring only `id` avoids that. Validate it against a page from your own tenant:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "@odata.nextLink": { "type": "string" },
+    "value": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "userPrincipalName": {},
+          "auditData": {}
+        },
+        "required": ["id"]
+      }
+    }
+  }
+}
+```
+
+**How the retries work.** D1 and D3 each sit inside a small **Do until** loop, a pattern inherited from the CoE Starter Kit. If the call fails, a failure scope waits and sets `httpCallFailed` to true, and the loop tries again. If the last attempt still failed, a condition adds 1 to `httpCallFailureCount`, which the completeness check in phase F reports. The HTTP actions' own retry policy already handles timeouts (408), throttling (429) and server errors (5xx). It doesn't retry authentication errors such as 401, but the loop still makes its five attempts. Tested with an invalid client secret: D1 used all five, D3 then failed on an empty URL, and the run ended as Failed after about 4.5 minutes, with "query started: no" in the completeness check.
+
+> [!WARNING]
+> **Three gaps to close in your build.**
+>
+> - Only `succeeded` ends the D2 wait. Also stop on `failed` or `cancelled`, then fail the run unless the status is `succeeded`. The reference build's `QueryWaitTimeExceeded` action never runs, so don't rely on it.
+> - Skip D3 when D1 didn't return a query ID, instead of reading an empty URL.
+> - Turn on secure outputs for `AuditLogRecords`, because each page holds user names, IP addresses and file names ([Securing run history](docs/ACTION_REFERENCE.md#securing-run-history)).
+
+Every action, with its inputs and run-after settings: [D1](docs/ACTION_REFERENCE.md#d1-create-the-audit-log-query), [D2](docs/ACTION_REFERENCE.md#d2-wait-for-the-query-to-finish), [D3](docs/ACTION_REFERENCE.md#d3-fetch-a-page-of-records), [HTTP authentication](docs/ACTION_REFERENCE.md#http-authentication) and [Limits and throttling](docs/ACTION_REFERENCE.md#limits-and-throttling).
+
 ## Secret-handling decision: how the client secret is stored
 
 > [!IMPORTANT]
 > **Choose before you build.** The flows authenticate to Microsoft Graph with the app registration's credential, and where that credential lives is your decision, agreed with your security team. Nothing in this guide is pre-filled: you create every environment variable and enter every value yourself.
 
-| | **A. Azure Key Vault** (recommended) | **B. Plain-text environment variable** | **C. Certificate** (advanced) |
+| | **A. Azure Key Vault** (recommended) | **B. Plain-text environment variable** (not recommended) | **C. Certificate** (advanced) |
 | --- | --- | --- | --- |
 | Where the secret lives | A Key Vault secret. Dataverse holds only a reference to it. | A Text environment variable value in Dataverse | A certificate (PFX) and its password, ideally in Key Vault |
 | Who can read it | Identities with **Key Vault Secrets User** on the vault, and Dataverse when a flow asks for it | Anyone who can read environment variable values in the environment | As option A or B, depending on where you store the PFX and password |
@@ -191,7 +245,7 @@ Details, and how to size the limits for your volumes: [Loop limits](docs/ACTION_
 | Rotation | Update the secret in Key Vault, then save the flows or turn them off and on | Update the value, then save the flows or turn them off and on | Upload a new certificate, then update the stored PFX and password |
 | Effort | Medium: Azure subscription, vault, RBAC and networking | Low | High: in both flows, set **Credential Type** to Certificate on `AuditLogQuery`, `AuditLogQueryStatus` and `AuditLogRecords` ([HTTP authentication](docs/ACTION_REFERENCE.md#http-authentication)). The reference build was tested with a client secret only. |
 | Settings | `poc_Audit_UsingAKVtruefalse` = `true`; `poc_KeyVaultSecret` set; `poc_Audit_Secret` empty | `poc_Audit_UsingAKVtruefalse` = `false`; `poc_Audit_Secret` set | Your own variables for the PFX and password |
-| Suits | Production | Development and test only, with a short-lived secret | Production, where policy requires certificates |
+| Suits | Production | Not recommended; at most an isolated test environment with a short-lived secret | Production, where policy requires certificates |
 
 > [!CAUTION]
 > **The switch is an exact text match.** In the reference build, only `true` (lower case, no spaces) is guaranteed to select Key Vault. A value such as `yes`, or `true` with a trailing space, silently selects the plain-text secret instead. If that's empty, sign-in fails with `AADSTS7000215` and nothing points to the switch. In your build, normalise the value with `toLower(trim(...))` or use a Two options variable.
@@ -210,11 +264,14 @@ Follow Microsoft's [Use Azure Key Vault secrets](https://learn.microsoft.com/pow
 
 **How the flow reads it.** Secret environment variables aren't available in the dynamic content selector, so the flow calls the Dataverse unbound action `RetrieveEnvironmentVariableSecretValue` with the variable's schema name and reads `outputs('Perform_an_unbound_action')?['body/EnvironmentVariableSecretValue']`. The action has secure inputs and outputs. If it fails, the flow writes an error row (no run log row exists yet) and ends the run as **Failed** with `KeyVaultSecretUnavailable`, before any Graph call is made. Secret environment variables work only with Power Automate flows, Copilot Studio agents and custom connectors.
 
-### Option B — Plain-text environment variable (dev/test only)
+### Option B — Plain-text environment variable (not recommended)
+
+> [!CAUTION]
+> **Not recommended.** This option stores a credential for a tenant-wide, high-privilege permission in clear text. Use Key Vault (option A) or a certificate (option C) instead. It's documented only because the reference build was live-tested this way. If you use it at all, keep it to a short-lived secret in an isolated test environment.
 
 1. Set `poc_Audit_UsingAKVtruefalse` to `false`.
 2. Enter the client secret's **Value**, not its Secret ID, as the **Current value** of `poc_Audit_Secret`. Leave its **Default value** empty, because the default is part of the variable's definition and is always exported.
-3. Use a short-lived secret, and keep this option to development and test environments.
+3. Use a short-lived secret, and keep it to an isolated test environment.
 4. Before you export the solution, open the variable and, under **Current Value**, select **...** > **Remove from this solution**.
 
 See [Environment variables overview](https://learn.microsoft.com/power-apps/maker/data-platform/environmentvariables) and [Storing the client secret](docs/ACTION_REFERENCE.md#storing-the-client-secret).
@@ -241,9 +298,9 @@ Don't create the three legacy variables in the reference build: `poc_Audit_Revie
 
 **Changing a value.** Flows keep using the previous value until they're saved, or turned off and on again. After any change, save both flows and run the manual flow over a short window. See [Changing a value](docs/ACTION_REFERENCE.md#changing-a-value) and [Environment variables](docs/ACTION_REFERENCE.md#environment-variables).
 
-## Build steps
+## Build from scratch
 
-Build in a development environment first. Each step links the detail you need.
+No solution package is published, so you create every component yourself, in this order, in a development environment. You choose the secret option, publisher prefix, retention and security that fit your organisation. Get the approvals in [Read this first](#read-this-first-high-privilege-tenant-wide-access) before step 1. Each step links the detail you need.
 
 1. **Register the app.** Create a single-tenant app registration, add the Microsoft Graph **application** permission `AuditLogsQuery.Read.All` and grant admin consent. Add a client secret with an expiry of less than 12 months (24 months at most), and copy its **Value** straight away. A certificate is preferred in production. See [Graph permissions](docs/ACTION_REFERENCE.md#graph-permissions).
 2. **Store the secret** using [option A, B or C](#secret-handling-decision-how-the-client-secret-is-stored).
@@ -254,7 +311,7 @@ Build in a development environment first. Each step links the detail you need.
 7. **Build the scheduled flow** phase by phase, from [Phase A](docs/ACTION_REFERENCE.md#phase-a-initialise) to [Phases E and F](docs/ACTION_REFERENCE.md#phases-e-and-f-error-handling-and-completeness), then the [manual flow](docs/ACTION_REFERENCE.md#the-manual-flow). Apply the [recommended settings](docs/ACTION_REFERENCE.md#recommended-settings) and size the [loop limits](docs/ACTION_REFERENCE.md#loop-limits). Add a note to each action saying why it exists ([solution-aware flows](https://learn.microsoft.com/power-automate/overview-solution-flows)).
 8. **Validate.** Run the manual flow over one day that's at least four days old. Compare the row count with a Purview Audit search for the same day, check the run log and error rows, and confirm that run history hides the secret. Work through the [clean-build checklist](docs/ACTION_REFERENCE.md#clean-build-checklist).
 9. **Lock it down.** Give report readers a read-only security role, schedule a bulk-delete job for your retention period, confirm the data policy and set up monitoring (see [Failure states and monitoring](#failure-states-and-monitoring)).
-10. **Promote it.** Export the solution as managed and import it into test, then production ([export solutions](https://learn.microsoft.com/power-apps/maker/data-platform/export-solutions)). Follow [Export hygiene](#export-hygiene-alm) first, and set the environment variable values in each target environment.
+10. **Promote it.** Before you export, remove the **current value** of every environment variable from the solution (**...** > **Remove from this solution**), so no secret, tenant ID or client ID leaves the environment. Export the solution as managed and import it into test, then production ([export solutions](https://learn.microsoft.com/power-apps/maker/data-platform/export-solutions)), and set the values in each target environment after import.
 
 ## Data model
 
@@ -418,26 +475,18 @@ Run history is kept for 28 days ([limits and configuration](https://learn.micros
 - **One tenant, global cloud only.** The flows collect from the tenant that holds the app registration, in the global service.
 - **Collector only.** The build includes no report, alerting or retention job. You build those.
 
-## Export hygiene (ALM)
-
-Solution export doesn't mask environment variable values. A Text variable's current value, such as the plain-text secret in option B, is exported in clear text if it's in the solution. Before you export:
-
-1. Remove the current value of every environment variable from the solution (**...** > **Remove from this solution**), and keep the default values empty or non-sensitive.
-2. Export, unzip the solution file and inspect the workflow JSON, `customizations.xml` and any `environmentvariablevalues.json`.
-3. Confirm that there's no client secret, token, tenant ID, client ID or email address in any file, and no current-value file at all.
-4. Set the values in each target environment after import, or with a [deployment settings file](https://learn.microsoft.com/power-platform/alm/conn-ref-env-variables-build-tools).
-
 ## Origins and credit
 
 This build is adapted from the audit log collection pattern in the [Microsoft Power Platform CoE Starter Kit](https://learn.microsoft.com/power-platform/guidance/coe/starter-kit), described in [Collect audit logs using an HTTP action with Microsoft Graph](https://learn.microsoft.com/power-platform/guidance/coe/setup-auditlog-http-graphapi). The kit is open source under the MIT licence at [github.com/microsoft/coe-starter-kit](https://github.com/microsoft/coe-starter-kit). Microsoft describes it as no longer actively maintained, with its core capabilities now in the Power Platform admin center. Credit for the original pattern belongs to the CoE Starter Kit team.
 
-This build changes the pattern: it collects only `CopilotInteraction` records into their own table, logs every run and every failure, lets you choose Key Vault or a plain-text variable for the secret, fails the run loudly when collection is incomplete, and adds a manual back-fill flow. Some legacy actions and variables from earlier versions remain in the reference build and are labelled **Legacy** in the reference. See [Origins and credit](docs/ACTION_REFERENCE.md#origins-and-credit).
+This build changes the pattern: it collects only `CopilotInteraction` records into their own table, logs every run and every failure, lets you choose Key Vault or a plain-text variable (not recommended) for the secret, fails the run loudly when collection is incomplete, and adds a manual back-fill flow. Some legacy actions and variables from earlier versions remain in the reference build and are labelled **Legacy** in the reference. See [Origins and credit](docs/ACTION_REFERENCE.md#origins-and-credit).
 
 ## Related
 
 - [Action reference](docs/ACTION_REFERENCE.md): every action in both flows, what it does and why it exists.
-- [Documentation site](https://ryanbowie.github.io/copilot-interaction-logging/): this guide as a single page, with an architecture diagram, annotated screenshots and a build-step tracker.
+- [Documentation site](https://ryanbowie.github.io/copilot-interaction-logging/): this guide as a single page, with an architecture diagram, annotated screenshots and a build-from-scratch step tracker.
 - [Custom Agent Reporting – Architecture](https://github.com/RyanBowie/custom-agent-reporting-architecture): a reference architecture for tenant-wide agent reporting that uses this build as its interaction-telemetry source.
+- More community projects: [Power Platform Solution Reviewer](https://ryanbowie.github.io/copilot-studio-powerplatform-solution-reviewer-site/), [SharePoint Search Hub](https://ryanbowie.github.io/copilot-studio-sharepoint-search-hub/), [Power BI Agent](https://ryanbowie.github.io/copilot-studio-powerbi-agent/) and [Documentation Builder](https://ryanbowie.github.io/copilot-studio-documentation-builder/).
 - Microsoft Purview: [Audit logs for Copilot and AI applications](https://learn.microsoft.com/purview/audit-copilot), [get started with auditing](https://learn.microsoft.com/purview/audit-get-started) and [auditing solutions](https://learn.microsoft.com/purview/audit-solutions-overview).
 
 ## Licence

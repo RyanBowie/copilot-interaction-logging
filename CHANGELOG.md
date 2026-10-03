@@ -9,25 +9,33 @@ First version of the build guide.
 ### Added
 
 - **[README](README.md).** It covers:
-  - what you build and who should approve it;
+  - what you build and the approvals to get before you build;
   - prerequisites and how the two flows work;
+  - the HTTP calls each flow makes, with inputs and expected responses;
   - the secret-handling decision and environment variables;
-  - the build steps and data model;
+  - how to build from scratch, and the data model;
   - operations, troubleshooting and limitations.
 - **[Action reference](docs/ACTION_REFERENCE.md).** Every action in both flows: what it does, why it exists and what to change in a clean build. It also covers loop limits, failure paths, known issues and a clean-build checklist.
 - **Documentation site (`docs/`, published with GitHub Pages).** The README as a single page. It adds:
   - an architecture diagram;
   - annotated screenshots of the reference build;
-  - an approval checklist;
   - a build-step tracker;
-  - a back-fill helper.
+  - a back-fill helper;
+  - links to more community projects.
 - **Secret-handling decision.** Three ways to store the Microsoft Graph credential:
   - Azure Key Vault (recommended);
-  - a plain-text environment variable (dev/test only);
+  - a plain-text environment variable (not recommended);
   - a certificate.
 
   Nothing is pre-filled: you choose the option and set every value yourself.
 - **Origins and credit.** The build adapts the audit log pattern from the [Microsoft Power Platform CoE Starter Kit](https://github.com/microsoft/coe-starter-kit).
+
+### Changed (same day, after first publication)
+
+- Removed the approval checklist. A short "Get approval before you build" note replaces it.
+- Removed the Export hygiene section. Its guidance is now part of build step 10.
+- Labelled the plain-text environment variable "Not recommended".
+- Renamed "Build steps" to "Build from scratch".
 
 ### Reference build
 

@@ -24,8 +24,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark light">
 <title>Copilot Interaction Logging · Purview audit data in Dataverse</title>
-<meta name="description" content="Documentation-only build guide for copying Microsoft 365 Copilot interaction metadata from the Purview unified audit log into Dataverse with Power Automate and Microsoft Graph. Read the security warning, approval checklist and secret-handling options before you build.">
-<meta property="og:title" content="Copilot Interaction Logging">
+<meta name="description" content="Documentation-only build guide for copying Microsoft 365 Copilot interaction metadata from the Purview unified audit log into Dataverse with Power Automate and Microsoft Graph. Read the security warning and secret-handling options before you build."><meta property="og:title" content="Copilot Interaction Logging">
 <meta property="og:description" content="Build guide: collect Purview Copilot interaction audit logs into Dataverse for usage reporting, with an explicit secret-handling decision for builders.">
 <meta property="og:type" content="website">
 <!-- dl-meta:start -->
@@ -339,19 +338,12 @@ details[open] > summary { border-bottom: 1px solid var(--cp-border); }
 .step-head h3 { margin: 0; }
 .step-done { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--cp-text-muted); cursor: pointer; }
 
-/* Forms, checklist, progress */
+/* Forms, progress */
 input[type="text"], input[type="date"], input[type="search"] { padding: 6px 10px; border: 1px solid var(--cp-border-strong); border-radius: var(--radius); background: var(--cp-surface); color: var(--cp-text); font: inherit; }
 input[type="checkbox"], input[type="radio"] { width: 18px; height: 18px; margin: 0; accent-color: var(--cp-accent); flex: none; }
 .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 12px 0; }
 .progress { flex: 1 1 200px; max-width: 360px; height: 10px; overflow: hidden; border: 1px solid var(--cp-border); border-radius: 999px; background: var(--cp-surface-soft); }
 .progress-bar { width: 0; height: 100%; background: var(--cp-accent); transition: width 0.2s ease; }
-.checklist { display: grid; gap: 8px; margin: 16px 0; padding: 0; list-style: none; }
-.checklist > li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 12px; margin: 0; padding: 12px 16px; border: 1px solid var(--cp-border); border-radius: var(--radius); background: var(--cp-surface); }
-.checklist > li > input { margin-top: 4px; }
-.checklist > li.is-checked { border-color: var(--cp-success); background: var(--cp-surface-soft); background: color-mix(in srgb, var(--cp-success) 7%, var(--cp-surface)); }
-.checklist label { cursor: pointer; }
-.checklist .owner { grid-column: 2; }
-.checklist .owner input { width: 100%; max-width: 440px; font-size: 0.9rem; }
 .field { display: flex; flex-direction: column; gap: 4px; font-size: 0.9rem; }
 .field > label, .field > span { font-weight: 600; }
 .form-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px; margin: 12px 0; }
@@ -391,7 +383,7 @@ input[type="checkbox"], input[type="radio"] { width: 18px; height: 18px; margin:
   .layout { display: block; max-width: none; padding: 0; }
   .section { padding-top: 24px; }
   .card, .option-panel, .facts li, .choice { box-shadow: none; }
-  .card, .callout, .option-panel, .checklist > li, .steps > li, .stepper > li, tr, details, .diagram-wrap { break-inside: avoid; }
+  .card, .callout, .option-panel, .steps > li, .stepper > li, tr, details, .diagram-wrap { break-inside: avoid; }
   .diagram-wrap svg { min-width: 0; }
   .table-wrap { overflow: visible; }
 }
@@ -484,9 +476,12 @@ html.dl-motion .dl-reveal.dl-in { opacity: 1; transform: none; }
 
 /* Two-part series band */
 .dl-series { margin: 72px 0 8px; padding: 24px; border: 1px solid var(--cp-border); border-radius: var(--radius-card); background-color: var(--cp-bg-elevated); background-image: radial-gradient(circle, color-mix(in srgb, var(--cp-border-strong) 40%, transparent) 1px, transparent 1.6px); background-size: 20px 20px; }
-.dl-series-k { margin: 0 0 14px; color: var(--cp-accent); font: 700 0.75rem/1.4 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
+.dl-series-k, .dl-others-k { margin: 0 0 14px; color: var(--cp-accent); font: 700 0.75rem/1.4 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
 .dl-series ol { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin: 0; padding: 0; list-style: none; }
-.dl-series li { margin: 0; }
+.dl-series li, .dl-others li { margin: 0; }
+.dl-others { margin: 24px 0 8px; padding: 24px; border: 1px solid var(--cp-border); border-radius: var(--radius-card); background: var(--cp-bg-elevated); }
+.dl-others ol { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin: 0; padding: 0; list-style: none; }
+.dl-others .dl-no { font-size: 1.5rem; }
 .dl-card { display: flex; flex-direction: column; gap: 6px; height: 100%; padding: 18px 20px; border: 1px solid var(--cp-border); border-radius: var(--radius); background: var(--cp-surface); box-shadow: var(--card-shadow); color: var(--cp-text); text-decoration: none; transition: border-color 0.2s ease, transform 0.2s ease; }
 .dl-card:hover, .dl-card:focus-visible { border-color: var(--cp-accent); color: var(--cp-text); transform: translateY(-2px); }
 .dl-card[aria-current="page"] { border-color: color-mix(in srgb, var(--cp-accent) 45%, var(--cp-border)); background: linear-gradient(var(--cp-accent-soft), var(--cp-accent-soft)), var(--cp-surface); }
@@ -496,7 +491,7 @@ html.dl-motion .dl-reveal.dl-in { opacity: 1; transform: none; }
 .dl-go { margin-top: auto; padding-top: 6px; color: var(--cp-accent); font-size: 0.9rem; font-weight: 600; }
 .dl-here { align-self: flex-start; margin-top: auto; padding: 2px 10px; border-radius: 999px; background: var(--cp-accent); color: var(--cp-accent-fg); font: 700 0.7rem/1.6 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
 
-@media (max-width: 600px) { .hero { padding: 36px 14px 20px; } .dl-series { padding: 18px 14px; } }
+@media (max-width: 600px) { .hero { padding: 36px 14px 20px; } .dl-series, .dl-others { padding: 18px 14px; } }
 @media (forced-colors: active) {
   .hero h1 { background: none; color: CanvasText; -webkit-text-fill-color: CanvasText; }
   .hero h1::after, #dl-progress { forced-color-adjust: none; background: Highlight; }
@@ -542,18 +537,17 @@ html.dl-motion .dl-reveal.dl-in { opacity: 1; transform: none; }
     <li><a href="#alternatives">Built-in options</a></li>
     <li><a href="#how">How it works</a></li>
     <li><a href="#gallery">Inside the flow</a></li>
-    <li><a href="#checklist">Approval checklist</a></li>
+    <li><a href="#http-calls">HTTP calls</a></li>
     <li><a href="#prereqs">Prerequisites</a></li>
     <li><a href="#secrets">Secret handling</a></li>
     <li><a href="#env-vars">Environment variables</a></li>
-    <li><a href="#build">Build steps</a></li>
+    <li><a href="#build">Build from scratch</a></li>
     <li><a href="#data-model">Data model</a></li>
     <li><a href="#reporting">Reporting</a></li>
     <li><a href="#failures">Failure states</a></li>
     <li><a href="#operations">Operations</a></li>
     <li><a href="#troubleshooting">Troubleshooting</a></li>
     <li><a href="#limitations">Limitations</a></li>
-    <li><a href="#export-hygiene">Export hygiene</a></li>
     <li><a href="#origins">Origins</a></li>
     <li><a href="#related">Related</a></li>
   </ul>
@@ -569,18 +563,17 @@ html.dl-motion .dl-reveal.dl-in { opacity: 1; transform: none; }
       <li><a href="#alternatives">Built-in options first</a></li>
       <li><a href="#how">How it works</a></li>
       <li><a href="#gallery">Inside the flow</a></li>
-      <li><a href="#checklist">Approval checklist</a></li>
+      <li><a href="#http-calls">The HTTP calls</a></li>
       <li><a href="#prereqs">Prerequisites and permissions</a></li>
       <li><a href="#secrets">Secret handling decision</a></li>
       <li><a href="#env-vars">Environment variables</a></li>
-      <li><a href="#build">Build steps</a></li>
+      <li><a href="#build">Build from scratch</a></li>
       <li><a href="#data-model">Data model</a></li>
       <li><a href="#reporting">Reporting</a></li>
       <li><a href="#failures">Failure states and monitoring</a></li>
       <li><a href="#operations">Operations</a></li>
       <li><a href="#troubleshooting">Troubleshooting</a></li>
       <li><a href="#limitations">Limitations</a></li>
-      <li><a href="#export-hygiene">Export hygiene (ALM)</a></li>
       <li><a href="#origins">Origins and credit</a></li>
       <li><a href="#related">Related</a></li>
     </ol>
@@ -591,14 +584,14 @@ html.dl-motion .dl-reveal.dl-in { opacity: 1; transform: none; }
       <p class="pill">Community project. This is not a Microsoft product.</p>
       <h1 id="page-title">Copilot Interaction Logging</h1>
       <p class="lede">A build guide for collecting <strong>metadata</strong> about Microsoft 365 Copilot and Copilot Studio interactions from the Microsoft Purview unified audit log into Dataverse, using two Power Automate cloud flows and the Microsoft Graph audit log query API. From Dataverse you can report on usage with Power BI or any Dataverse client. The build collects no prompt or response text.</p>
-      <p>It is a personal project shared as-is under the <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/LICENSE">MIT licence</a>. Microsoft does not support it, and no SLA or warranty applies. Read the whole of this page, then build and test in a non-production environment and get the approvals listed below <strong>before</strong> you build it anywhere that holds real data.</p>
+      <p>It is a personal project shared as-is under the <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/LICENSE">MIT licence</a>. Microsoft does not support it, and no SLA or warranty applies. Read the whole of this page, then obtain approval for the app registration and secret handling from your security and privacy owners, and build and test in a non-production environment, <strong>before</strong> you build it anywhere that holds real data.</p>
       <div class="callout callout-info" role="note">
         <p class="callout-title"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5h.01"/></svg>Documentation only</p>
         <p>No solution package, flow export or source code is published. This page and the <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md">action-by-action reference</a> describe a tested reference build in enough detail for you to build your own. You own, secure and maintain whatever you build.</p>
       </div>
       <div class="cta-row">
         <a class="btn btn-primary" href="#read-first">Read the warning</a>
-        <a class="btn" href="#build">Build steps</a>
+        <a class="btn" href="#build">Build from scratch</a>
         <a class="btn" href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md">Action reference</a>
       </div>
       <!-- dl-hero:start -->
@@ -648,17 +641,17 @@ html.dl-motion .dl-reveal.dl-in { opacity: 1; transform: none; }
           <thead><tr><th scope="col">Component</th><th scope="col">What it is</th><th scope="col">Details</th></tr></thead>
           <tbody>
             <tr><th scope="row">App registration</th><td>A Microsoft Entra ID app with the Microsoft Graph <strong>application</strong> permission <code>AuditLogsQuery.Read.All</code></td><td><a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#graph-permissions">Graph permissions</a></td></tr>
-            <tr><th scope="row">Client secret store</th><td>Azure Key Vault (recommended) or a plain-text environment variable. <strong>You decide.</strong></td><td><a href="#secrets">Secret-handling decision</a></td></tr>
+            <tr><th scope="row">Client secret store</th><td>Azure Key Vault (recommended) or a plain-text environment variable (not recommended). <strong>You decide.</strong></td><td><a href="#secrets">Secret-handling decision</a></td></tr>
             <tr><th scope="row">Dataverse tables</th><td>Copilot Interactions, Copilot Interaction Flow Runs and Copilot Interaction Flow Run Errors</td><td><a href="#data-model">Data model</a></td></tr>
             <tr><th scope="row">Environment variables</th><td>Seven, plus three legacy ones to leave out</td><td><a href="#env-vars">Environment variables</a></td></tr>
-            <tr><th scope="row">Connection reference</th><td>One, for Microsoft Dataverse</td><td><a href="#build">Build steps</a></td></tr>
+            <tr><th scope="row">Connection reference</th><td>One, for Microsoft Dataverse</td><td><a href="#build">Build from scratch</a></td></tr>
             <tr><th scope="row">Scheduled flow</th><td>Runs daily and collects one UTC day from four days ago. 85 actions in the reference build.</td><td><a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md">Action reference</a></td></tr>
             <tr><th scope="row">Manual flow</th><td>Back-fills a date range you choose. 81 actions in the reference build.</td><td><a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#the-manual-flow">The manual flow</a></td></tr>
             <tr><th scope="row">Report</th><td>Your own, for example Power BI with the Dataverse connector</td><td><a href="#reporting">Reporting</a></td></tr>
           </tbody>
         </table>
       </div>
-      <p>Build everything inside one Dataverse solution in a development environment, then promote it as a managed solution (see <a href="#build">Build steps</a>).</p>
+      <p>No package is published, so you build every component yourself, inside one Dataverse solution in a development environment, then promote it as a managed solution (see <a href="#build">Build from scratch</a>).</p>
     </section>
 
     <section class="section" id="read-first" aria-labelledby="read-first-h">
@@ -675,7 +668,10 @@ html.dl-motion .dl-reveal.dl-in { opacity: 1; transform: none; }
         </ul>
       </div>
       <p>The app registration needs only <code>AuditLogsQuery.Read.All</code>. Microsoft Graph offers workload-scoped variants such as <code>AuditLogsQuery-Exchange.Read.All</code> and <code>AuditLogsQuery-SharePoint.Read.All</code>, but none is documented as covering Copilot interaction records. The reference build hasn't been tested with them. <code>AuditLog.Read.All</code> is <strong>not</strong> enough for the audit log query API. See the <a href="https://learn.microsoft.com/graph/api/security-auditcoreroot-post-auditlogqueries?view=graph-rest-beta">API permissions</a> and the <a href="https://learn.microsoft.com/graph/permissions-reference">permissions reference</a>.</p>
-    </section>
+            <div class="callout callout-accent">
+              <p><strong>Get approval before you build.</strong> Your security and privacy owners should approve the app registration, the admin consent for <code>AuditLogsQuery.Read.All</code> and the <a href="#secrets">secret-handling option</a> before anyone creates them. Also confirm that a <a href="#alternatives">built-in option</a>, such as Microsoft Sentinel or Purview Audit search, doesn't already meet the need.</p>
+            </div>
+          </section>
 
     <section class="section" id="alternatives" aria-labelledby="alternatives-h">
       <p class="section-kicker">Before you start</p>
@@ -904,33 +900,111 @@ html.dl-motion .dl-reveal.dl-in { opacity: 1; transform: none; }
       </dialog>
     </section>
 
-    <section class="section" id="checklist" aria-labelledby="checklist-h">
-      <p class="section-kicker">Governance</p>
-      <h2 id="checklist-h">Approval checklist (before you build)</h2>
-      <p>Agree each of these with the right owner before you build in, or deploy to, any environment that holds real data. Tick each item as it's agreed and record the owner or evidence. <span data-jsonly hidden>Your answers are saved in this browser only (local storage) and are never sent anywhere. Use <strong>Copy as Markdown</strong> to paste the list into a change request.</span></p>
-      <p class="no-js-only small muted">Scripts are off, so ticks and owners aren't saved or copied. Print this page or use the checklist in the README instead.</p>
-      <div class="toolbar" data-jsonly hidden>
-        <div class="progress" role="progressbar" aria-label="Checklist progress" aria-valuemin="0" aria-valuemax="14" aria-valuenow="0"><div class="progress-bar" id="checklist-bar"></div></div>
-        <span id="checklist-count" class="small">0 of 14 agreed</span>
-        <button type="button" class="btn btn-sm" id="checklist-copy">Copy as Markdown</button>
-        <button type="button" class="btn btn-sm" id="checklist-reset">Reset</button>
+    <section class="section" id="http-calls" aria-labelledby="http-calls-h">
+      <p class="section-kicker">Under the hood</p>
+      <h2 id="http-calls-h">The HTTP calls</h2>
+      <p>Three HTTP actions do all the talking to Microsoft Graph. <code>AuditLogQuery</code> creates an audit log query, <code>AuditLogQueryStatus</code> waits for it to finish, and <code>AuditLogRecords</code> reads its records a page at a time. This section shows what each one sends and what the Parse JSON action after it expects back. The flows use no Graph connector: the HTTP actions sign in on their own.</p>
+      <div class="grid-2">
+        <div class="card">
+          <h3>How each call signs in</h3>
+          <p>All three actions use <strong>Active Directory OAuth</strong> to get an app-only token, so no user signs in and no connection is needed. The <a href="#gallery">D1 screenshot</a> shows these fields in the designer.</p>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th scope="col">Field</th><th scope="col">Value</th></tr></thead>
+              <tbody>
+                <tr><td>Authority</td><td><code>Audit_Authority</code>, default <code>https://login.windows.net</code></td></tr>
+                <tr><td>Tenant</td><td><code>Audit_Tenant</code>: your directory (tenant) ID</td></tr>
+                <tr><td>Audience</td><td><code>Audit_Audience</code>, default <code>https://graph.microsoft.com</code></td></tr>
+                <tr><td>Client ID</td><td><code>Audit_AppRegID</code></td></tr>
+                <tr><td>Credential type</td><td>Secret, from the output of <code>Resolve_Graph_Secret</code> (<a href="#option-a">option A</a> or <a href="#option-b">B</a>), or Certificate (<a href="#option-c">option C</a>)</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="small muted">Turn on secure inputs for all three actions, so the secret and the token request stay out of run history.</p>
+        </div>
+        <div class="card">
+          <h3>What the app registration needs</h3>
+          <p>The Microsoft Graph <strong>application</strong> permission <code>AuditLogsQuery.Read.All</code>, with admin consent. Tested on the beta endpoint, it covers all three calls. <code>AuditLog.Read.All</code> isn't enough, and there's no Copilot-specific permission.</p>
+          <p>The permission isn't limited to Copilot: whoever holds the credential can query audit records from every audited service in the tenant. Get it approved before you build (see <a href="#read-first">Read this first</a>).</p>
+          <p class="small muted">The reference build calls the <code>beta</code> endpoint, where all three calls were tested. Moving to <code>v1.0</code> is untested: it means dropping the record-type filter, regenerating the Parse JSON schemas and checking the permissions again, so try it in a sandbox first (<a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#switching-to-v10">Switching to v1.0</a>).</p>
+        </div>
       </div>
-      <ul class="checklist" id="checklist-list">
-        <li><input type="checkbox" id="chk-privacy"><label for="chk-privacy"><strong>Privacy:</strong> a DPIA or privacy review covers UPNs, IP addresses, regions and accessed-resource names for every Copilot user.</label><div class="owner"><label class="visually-hidden" for="own-privacy">Owner or evidence: Privacy</label><input type="text" id="own-privacy" placeholder="Owner / evidence"></div></li>
-        <li><input type="checkbox" id="chk-security"><label for="chk-security"><strong>Security:</strong> someone has approved an app registration with tenant-wide <code>AuditLogsQuery.Read.All</code>.</label><div class="owner"><label class="visually-hidden" for="own-security">Owner or evidence: Security</label><input type="text" id="own-security" placeholder="Owner / evidence"></div></li>
-        <li><input type="checkbox" id="chk-consent"><label for="chk-consent"><strong>Consent:</strong> a Privileged Role Administrator or Global Administrator is available to grant admin consent (<a href="https://learn.microsoft.com/entra/identity/enterprise-apps/grant-admin-consent">grant admin consent</a>, <a href="https://learn.microsoft.com/entra/identity/role-based-access-control/permissions-reference">role reference</a>).</label><div class="owner"><label class="visually-hidden" for="own-consent">Owner or evidence: Consent</label><input type="text" id="own-consent" placeholder="Owner / evidence"></div></li>
-        <li><input type="checkbox" id="chk-secret"><label for="chk-secret"><strong>Secret handling:</strong> an option from <a href="#secrets">the secret-handling decision</a> is agreed with security. Key Vault is recommended.</label><div class="owner"><label class="visually-hidden" for="own-secret">Owner or evidence: Secret handling</label><input type="text" id="own-secret" placeholder="Owner / evidence"></div></li>
-        <li><input type="checkbox" id="chk-credential"><label for="chk-credential"><strong>Credential lifecycle:</strong> there's a named owner, an expiry date and a rotation process (<a href="https://learn.microsoft.com/entra/identity-platform/how-to-add-credentials">add credentials</a>).</label><div class="owner"><label class="visually-hidden" for="own-credential">Owner or evidence: Credential lifecycle</label><input type="text" id="own-credential" placeholder="Owner / evidence"></div></li>
-        <li><input type="checkbox" id="chk-workload"><label for="chk-workload"><strong>Workload identity controls:</strong> the app's sign-ins are monitored (<a href="https://learn.microsoft.com/entra/identity/monitoring-health/concept-sign-ins">sign-in logs</a>), and Conditional Access for workload identities is considered (<a href="https://learn.microsoft.com/entra/identity/conditional-access/workload-identity">workload identities</a>).</label><div class="owner"><label class="visually-hidden" for="own-workload">Owner or evidence: Workload identity controls</label><input type="text" id="own-workload" placeholder="Owner / evidence"></div></li>
-        <li><input type="checkbox" id="chk-environment"><label for="chk-environment"><strong>Environment:</strong> a dedicated Dataverse environment with restricted membership is chosen (<a href="https://learn.microsoft.com/power-platform/admin/environments-overview">environments</a>, <a href="https://learn.microsoft.com/power-platform/admin/database-security">database security</a>).</label><div class="owner"><label class="visually-hidden" for="own-environment">Owner or evidence: Environment</label><input type="text" id="own-environment" placeholder="Owner / evidence"></div></li>
-        <li><input type="checkbox" id="chk-data-access"><label for="chk-data-access"><strong>Data access:</strong> report readers get a custom read-only security role for the three tables (<a href="https://learn.microsoft.com/power-platform/admin/security-roles-privileges">security roles</a>). This guide includes no role.</label><div class="owner"><label class="visually-hidden" for="own-data-access">Owner or evidence: Data access</label><input type="text" id="own-data-access" placeholder="Owner / evidence"></div></li>
-        <li><input type="checkbox" id="chk-retention"><label for="chk-retention"><strong>Retention:</strong> a retention period is agreed and a bulk-delete job is planned (<a href="https://learn.microsoft.com/power-platform/admin/delete-bulk-records">bulk delete</a>).</label><div class="owner"><label class="visually-hidden" for="own-retention">Owner or evidence: Retention</label><input type="text" id="own-retention" placeholder="Owner / evidence"></div></li>
-        <li><input type="checkbox" id="chk-licensing"><label for="chk-licensing"><strong>Licensing and request limits:</strong> the flow owner has a premium Power Automate licence, because the flows use the premium HTTP and Dataverse connectors (<a href="https://learn.microsoft.com/power-platform/admin/power-automate-licensing/types">licence types</a>, <a href="https://learn.microsoft.com/power-platform/admin/power-automate-licensing/faqs">FAQ</a>). For a busy tenant, the expected daily volume is checked against the <a href="https://learn.microsoft.com/power-platform/admin/api-request-limits-allocations#request-limits-in-power-automate">Power Platform request limits</a>, and a Process licence for the scheduled flow is considered (see <a href="#limitations">Limitations</a>).</label><div class="owner"><label class="visually-hidden" for="own-licensing">Owner or evidence: Licensing and request limits</label><input type="text" id="own-licensing" placeholder="Owner / evidence"></div></li>
-        <li><input type="checkbox" id="chk-dlp"><label for="chk-dlp"><strong>DLP:</strong> the environment's data policy allows the HTTP and Microsoft Dataverse connectors to be used together (<a href="https://learn.microsoft.com/power-platform/admin/wp-data-loss-prevention">data policies</a>).</label><div class="owner"><label class="visually-hidden" for="own-dlp">Owner or evidence: DLP</label><input type="text" id="own-dlp" placeholder="Owner / evidence"></div></li>
-        <li><input type="checkbox" id="chk-capacity"><label for="chk-capacity"><strong>Capacity:</strong> Dataverse database capacity is checked (<a href="https://learn.microsoft.com/power-platform/admin/capacity-storage">capacity</a>).</label><div class="owner"><label class="visually-hidden" for="own-capacity">Owner or evidence: Capacity</label><input type="text" id="own-capacity" placeholder="Owner / evidence"></div></li>
-        <li><input type="checkbox" id="chk-operations"><label for="chk-operations"><strong>Operations owner:</strong> someone watches for failed runs and backfills gaps (see <a href="#operations">Operations</a>).</label><div class="owner"><label class="visually-hidden" for="own-operations">Owner or evidence: Operations owner</label><input type="text" id="own-operations" placeholder="Owner / evidence"></div></li>
-        <li><input type="checkbox" id="chk-testing"><label for="chk-testing"><strong>Testing:</strong> the build is tested in a non-production environment first, using the <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#clean-build-checklist">clean-build checklist</a>.</label><div class="owner"><label class="visually-hidden" for="own-testing">Owner or evidence: Testing</label><input type="text" id="own-testing" placeholder="Owner / evidence"></div></li>
-      </ul>
+      <h3>The three calls</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th scope="col">Step</th><th scope="col">Request</th><th scope="col">Success and retries</th><th scope="col">What happens with the response</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><span class="badge">D1</span><br><code>AuditLogQuery</code></td>
+              <td><code>POST …/security/auditLog/queries</code> with the JSON body below: the time window, plus the <code>CopilotInteraction</code> record type and operation.</td>
+              <td><code>201 Created</code>. Wrapped in <code>RetryLogic-StartAuditLogQuery</code>: up to 5 attempts or 5 minutes, waiting 20 seconds after a failure.</td>
+              <td><code>ParseBody_2</code> reads the new query's <code>id</code>. <code>Set-AuditLogQueryID</code> keeps it, and <code>Set-InitialAuditLogQueryRecordsURL</code> builds the first page's URL: <code>…/queries/{query-id}/records?$top=500</code>.</td>
+            </tr>
+            <tr>
+              <td><span class="badge">D2</span><br><code>AuditLogQueryStatus</code></td>
+              <td><code>GET …/security/auditLog/queries/{query-id}</code>, no body.</td>
+              <td><code>WaitUntilQueryFinished</code> asks every 60 seconds until the status is <code>succeeded</code>: up to 480 checks or 8 hours (manual flow: 300 checks or 3 hours).</td>
+              <td><code>ParseBody-QueryStatus</code> reads <code>status</code>: <code>notStarted</code>, <code>running</code>, <code>succeeded</code>, <code>failed</code> or <code>cancelled</code>.</td>
+            </tr>
+            <tr>
+              <td><span class="badge">D3</span><br><code>AuditLogRecords</code></td>
+              <td><code>GET {records URL}</code>, no body and no extra headers. The first URL comes from D1; each later one is the previous page's <code>@odata.nextLink</code>.</td>
+              <td><code>200 OK</code>. Wrapped in <code>RetryLogic-AuditLogRecords</code>: up to 5 attempts or 10 minutes, waiting 30 seconds after a failure. The outer loop, <code>ProcessAuditLogRecords</code>, makes one pass per page: up to 100 pages (manual flow: 1,000) or 10 hours.</td>
+              <td><code>ParseBody-AuditLogRecords</code> reads <code>value</code>, an array of up to 500 records, and <code>@odata.nextLink</code>. D4 upserts each record, then copies the link into the records URL. The last page has no link, so the loop ends (tested with 550 records over two pages).</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="small muted">Shown with <code>…</code> for <code>https://graph.microsoft.com/beta</code>. Placeholders in braces are filled in by the flow at run time.</p>
+      <div class="grid-2">
+        <div class="card">
+          <h3>The D1 request body</h3>
+          <p>The two variables hold the one-day window that phase A works out; the end time is exclusive. Filtering on the record type and the operation keeps the query to Copilot interactions.</p>
+          <pre><code>{
+  "filterStartDateTime": "@{variables('startTime')}",
+  "filterEndDateTime": "@{variables('endTime')}",
+  "recordTypeFilters": ["CopilotInteraction"],
+  "operationFilters": ["CopilotInteraction"]
+}</code></pre>
+          <p class="small muted">This <code>recordTypeFilters</code> value works on beta only; v1.0 has no such member.</p>
+        </div>
+        <div class="card">
+          <h3>A records schema that won't stall paging</h3>
+          <p>The reference schema marks 13 properties of each record as required. One record that lacks any of them, or has <code>null</code> in a typed one, fails Parse JSON: the page isn't written, the URL doesn't move on, and the same page is read again until the loop limits. Requiring only <code>id</code> avoids that. Validate it against a page from your own tenant:</p>
+          <pre><code>{
+  "type": "object",
+  "properties": {
+    "@odata.nextLink": { "type": "string" },
+    "value": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "userPrincipalName": {},
+          "auditData": {}
+        },
+        "required": ["id"]
+      }
+    }
+  }
+}</code></pre>
+        </div>
+      </div>
+      <div class="callout callout-info">
+        <p class="callout-title"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5h.01"/></svg>How the retries work</p>
+        <p>D1 and D3 each sit inside a small <strong>Do until</strong> loop, a pattern inherited from the CoE Starter Kit. If the call fails, a failure scope waits and sets <code>httpCallFailed</code> to true, and the loop tries again. If the last attempt still failed, a condition adds 1 to <code>httpCallFailureCount</code>, which the completeness check in phase F reports.</p>
+        <p>The HTTP actions' own retry policy already handles timeouts (408), throttling (429) and server errors (5xx). It doesn't retry authentication errors such as 401, but the loop still makes its five attempts. Tested with an invalid client secret: D1 used all five, D3 then failed on an empty URL, and the run ended as Failed after about 4.5 minutes, with "query started: no" in the completeness check.</p>
+      </div>
+      <div class="callout callout-warning">
+        <p class="callout-title"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5h.01"/></svg>Three gaps to close in your build</p>
+        <ul>
+          <li>Only <code>succeeded</code> ends the D2 wait. Also stop on <code>failed</code> or <code>cancelled</code>, then fail the run unless the status is <code>succeeded</code>. The reference build's <code>QueryWaitTimeExceeded</code> action never runs, so don't rely on it.</li>
+          <li>Skip D3 when D1 didn't return a query ID, instead of reading an empty URL.</li>
+          <li>The D3 response holds user names, IP addresses and file names. Turn on <strong>secure outputs</strong> for <code>AuditLogRecords</code> as well as secure inputs, so they stay out of run history.</li>
+        </ul>
+      </div>
+      <p>Every action, with its settings, purpose and the change a clean build should make: <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#http-authentication">HTTP authentication</a> · <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#d1-create-the-audit-log-query">D1</a> · <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#d2-wait-for-the-query-to-finish">D2</a> · <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#d3-fetch-a-page-of-records">D3</a> · <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#d4-upsert-each-record">D4</a> · <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#securing-run-history">Securing run history</a> · <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#limits-and-throttling">Limits and throttling</a>.</p>
     </section>
 
     <section class="section" id="prereqs" aria-labelledby="prereqs-h">
@@ -968,7 +1042,7 @@ html.dl-motion .dl-reveal.dl-in { opacity: 1; transform: none; }
       <fieldset class="choice-grid" data-jsonly hidden>
         <legend>Choose how the client secret will be stored</legend>
         <label class="choice" for="opt-a"><input type="radio" name="secret-option" id="opt-a" value="A"><span class="choice-name">A: Azure Key Vault <span class="badge badge-success">Recommended</span></span><span class="choice-desc">Dataverse holds only a reference to a Key Vault secret. The secret is never exported with the solution.</span></label>
-        <label class="choice" for="opt-b"><input type="radio" name="secret-option" id="opt-b" value="B"><span class="choice-name">B: Plain-text variable <span class="badge badge-warning">Dev/test only</span></span><span class="choice-desc">Quick to set up, but the secret sits in clear text in Dataverse and can be exported with the solution.</span></label>
+        <label class="choice" for="opt-b"><input type="radio" name="secret-option" id="opt-b" value="B"><span class="choice-name">B: Plain-text variable <span class="badge badge-warning">Not recommended</span></span><span class="choice-desc">Quick to set up, but the secret sits in clear text in Dataverse, anyone who can read environment variable values can see it, and it can be exported with the solution.</span></label>
         <label class="choice" for="opt-c"><input type="radio" name="secret-option" id="opt-c" value="C"><span class="choice-name">C: Certificate <span class="badge">Advanced</span></span><span class="choice-desc">You set the HTTP actions' credential type to Certificate when you build them, and store the PFX and password yourself.</span></label>
       </fieldset>
 
@@ -1004,7 +1078,11 @@ html.dl-motion .dl-reveal.dl-in { opacity: 1; transform: none; }
       </div>
 
       <div class="option-panel" id="option-b" data-option-panel="B">
-        <h3>Option B — Plain-text environment variable (dev/test only)</h3>
+        <h3>Option B — Plain-text environment variable (not recommended)</h3>
+        <div class="callout callout-danger" role="note">
+          <p class="callout-title"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 21h20L12 3z"/><path d="M12 10v5M12 18h.01"/></svg>Not recommended</p>
+          <p>This option stores a credential for a tenant-wide, high-privilege permission in clear text. Use <a href="#option-a">Key Vault</a> or a <a href="#option-c">certificate</a> instead. It's documented only because the reference build was live-tested this way; if you use it at all, keep it to a short-lived secret in an isolated test environment.</p>
+        </div>
         <dl>
           <dt>Where the secret lives</dt><dd>A Text environment variable value in Dataverse.</dd>
           <dt>Who can read it</dt><dd>Anyone who can read environment variable values in the environment.</dd>
@@ -1012,12 +1090,12 @@ html.dl-motion .dl-reveal.dl-in { opacity: 1; transform: none; }
           <dt>Rotation</dt><dd>Update the value, then save the flows or turn them off and on.</dd>
           <dt>Effort</dt><dd>Low.</dd>
           <dt>Settings</dt><dd><code>poc_Audit_UsingAKVtruefalse</code> = <code>false</code>; <code>poc_Audit_Secret</code> set.</dd>
-          <dt>Suits</dt><dd>Development and test only, with a short-lived secret.</dd>
+          <dt>Suits</dt><dd>Not recommended. At most, an isolated test environment with a short-lived secret.</dd>
         </dl>
         <ol>
           <li>Set <code>poc_Audit_UsingAKVtruefalse</code> to <code>false</code>.</li>
           <li>Enter the client secret's <strong>Value</strong>, not its Secret ID, as the <strong>Current value</strong> of <code>poc_Audit_Secret</code>. Leave its <strong>Default value</strong> empty, because the default is part of the variable's definition and is always exported.</li>
-          <li>Use a short-lived secret, and keep this option to development and test environments.</li>
+          <li>Use a short-lived secret, and never use this option in production.</li>
           <li>Before you export the solution, open the variable and, under <strong>Current Value</strong>, select <strong>...</strong> &gt; <strong>Remove from this solution</strong>.</li>
         </ol>
         <p>See <a href="https://learn.microsoft.com/power-apps/maker/data-platform/environmentvariables">Environment variables overview</a> and <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#storing-the-client-secret">Storing the client secret</a>.</p>
@@ -1042,7 +1120,7 @@ html.dl-motion .dl-reveal.dl-in { opacity: 1; transform: none; }
         <div class="details-body">
           <div class="table-wrap">
             <table class="wrap-head">
-              <thead><tr><th scope="col"><span class="visually-hidden">Aspect</span></th><th scope="col">A: Azure Key Vault (recommended)</th><th scope="col">B: Plain-text environment variable (dev/test only)</th><th scope="col">C: Certificate (advanced)</th></tr></thead>
+              <thead><tr><th scope="col"><span class="visually-hidden">Aspect</span></th><th scope="col">A: Azure Key Vault (recommended)</th><th scope="col">B: Plain-text environment variable (not recommended)</th><th scope="col">C: Certificate (advanced)</th></tr></thead>
               <tbody>
                 <tr><th scope="row">Where the secret lives</th><td>A Key Vault secret. Dataverse holds only a reference to it.</td><td>A Text environment variable value in Dataverse</td><td>A certificate (PFX) and its password, ideally in Key Vault</td></tr>
                 <tr><th scope="row">Who can read it</th><td>Identities with <strong>Key Vault Secrets User</strong> on the vault, and Dataverse when a flow asks for it</td><td>Anyone who can read environment variable values in the environment</td><td>As option A or B, depending on where you store the PFX and password</td></tr>
@@ -1050,7 +1128,7 @@ html.dl-motion .dl-reveal.dl-in { opacity: 1; transform: none; }
                 <tr><th scope="row">Rotation</th><td>Update the secret in Key Vault, then save the flows or turn them off and on</td><td>Update the value, then save the flows or turn them off and on</td><td>Upload a new certificate, then update the stored PFX and password</td></tr>
                 <tr><th scope="row">Effort</th><td>Medium: Azure subscription, vault, RBAC and networking</td><td>Low</td><td>High: in both flows, set <strong>Credential Type</strong> to Certificate on the three HTTP actions. Tested with a client secret only.</td></tr>
                 <tr><th scope="row">Settings</th><td><code>poc_Audit_UsingAKVtruefalse</code> = <code>true</code>; <code>poc_KeyVaultSecret</code> set; <code>poc_Audit_Secret</code> empty</td><td><code>poc_Audit_UsingAKVtruefalse</code> = <code>false</code>; <code>poc_Audit_Secret</code> set</td><td>Your own variables for the PFX and password</td></tr>
-                <tr><th scope="row">Suits</th><td>Production</td><td>Development and test only, with a short-lived secret</td><td>Production, where policy requires certificates</td></tr>
+                <tr><th scope="row">Suits</th><td>Production</td><td>Not recommended; at most an isolated test environment with a short-lived secret</td><td>Production, where policy requires certificates</td></tr>
               </tbody>
             </table>
           </div>
@@ -1077,7 +1155,7 @@ html.dl-motion .dl-reveal.dl-in { opacity: 1; transform: none; }
             <tr data-var="appreg" class="is-relevant"><td><code>poc_Audit_AppRegID</code><br><span class="small muted">Audit_AppRegID</span></td><td>Text</td><td>(none)</td><td>The app registration's client ID</td><td><strong>Keep</strong></td><td data-col>Set</td></tr>
             <tr data-var="flag" class="is-relevant"><td><code>poc_Audit_UsingAKVtruefalse</code><br><span class="small muted">Audit_UsingAKVtruefalse</span></td><td>Text</td><td><code>false</code></td><td>The secret-storage switch. Only <code>true</code> selects Key Vault.</td><td><strong>Change.</strong> Normalise the value, or use Two options.</td><td data-col>Set to <code>true</code></td></tr>
             <tr data-var="kvsecret" class="is-relevant"><td><code>poc_KeyVaultSecret</code><br><span class="small muted">KeyVaultSecret</span></td><td>Secret</td><td>(none)</td><td>Option A: the Key Vault reference (see <a href="#option-a">option A</a>)</td><td><strong>Keep</strong> for option A</td><td data-col>Set: the Key Vault reference</td></tr>
-            <tr data-var="secret"><td><code>poc_Audit_Secret</code><br><span class="small muted">Audit_Secret</span></td><td>Text</td><td>(none)</td><td>Option B: the client secret value. Stored in clear text.</td><td><strong>Keep</strong> for option B only</td><td data-col>Leave empty (or omit in a clean build)</td></tr>
+            <tr data-var="secret"><td><code>poc_Audit_Secret</code><br><span class="small muted">Audit_Secret</span></td><td>Text</td><td>(none)</td><td>Option B (not recommended): the client secret value. Stored in clear text.</td><td><strong>Keep</strong> for option B only</td><td data-col>Leave empty (or omit in a clean build)</td></tr>
             <tr data-var="authority"><td><code>poc_Audit_Authority</code><br><span class="small muted">Audit_Authority</span></td><td>Text</td><td><code>https://login.windows.net</code></td><td>The sign-in authority</td><td><strong>Keep</strong></td><td data-col>Keep the default</td></tr>
             <tr data-var="audience"><td><code>poc_Audit_Audience</code><br><span class="small muted">Audit_Audience</span></td><td>Text</td><td><code>https://graph.microsoft.com</code></td><td>The token audience</td><td><strong>Keep</strong></td><td data-col>Keep the default</td></tr>
           </tbody>
@@ -1091,9 +1169,9 @@ html.dl-motion .dl-reveal.dl-in { opacity: 1; transform: none; }
     </section>
 
     <section class="section" id="build" aria-labelledby="build-h">
-      <p class="section-kicker">Step by step</p>
-      <h2 id="build-h">Build steps</h2>
-      <p>Build in a development environment first, after you've worked through the <a href="#checklist">approval checklist</a> and chosen a <a href="#secrets">secret option</a>. Each step links the detail you need. <span data-jsonly hidden>Tick each step as you finish it; progress is saved in this browser only.</span></p>
+      <p class="section-kicker">From an empty environment</p>
+      <h2 id="build-h">Build from scratch: step by step</h2>
+      <p>No solution package is published, so you create every component yourself, in this order, in a development environment. Building it yourself means you choose the <a href="#secrets">secret option</a>, publisher prefix, retention and security that fit your organisation, rather than inheriting someone else's. Get the approvals described in <a href="#read-first">Read this first</a> before step 1. Each step links the detail you need. <span data-jsonly hidden>Tick each step as you finish it; progress is saved in this browser only.</span></p>
       <div class="toolbar" data-jsonly hidden>
         <div class="progress" role="progressbar" aria-label="Build progress" aria-valuemin="0" aria-valuemax="10" aria-valuenow="0"><div class="progress-bar" id="build-bar"></div></div>
         <span id="build-count" class="small">0 of 10 done</span>
@@ -1114,33 +1192,54 @@ html.dl-motion .dl-reveal.dl-in { opacity: 1; transform: none; }
           <div class="step-head"><h3>Store the secret</h3><label class="step-done" data-jsonly hidden><input type="checkbox" data-step="2">Done<span class="visually-hidden">: store the secret</span></label></div>
           <p>Store it using the option you chose in <a href="#secrets">the secret-handling decision</a>.</p>
           <p data-step3="A"><strong>Option A:</strong> add the secret value to Key Vault, grant <em>Key Vault Secrets User</em> to yourself and the Dataverse service principal, and keep the vault details ready for when you create <code>poc_KeyVaultSecret</code> in step 5 (see <a href="#option-a">option A</a>).</p>
-          <p data-step3="B"><strong>Option B:</strong> keep the secret <strong>value</strong> ready to enter as the current value of <code>poc_Audit_Secret</code> in step 5. Development and test environments only (see <a href="#option-b">option B</a>).</p>
+          <p data-step3="B"><strong>Option B:</strong> keep the secret <strong>value</strong> ready to enter as the current value of <code>poc_Audit_Secret</code> in step 5. Not recommended (see <a href="#option-b">option B</a>).</p>
           <p data-step3="C"><strong>Option C:</strong> upload the certificate's public key to the app registration, and store the PFX and its password, ideally in Key Vault. You set the HTTP actions' credential type to Certificate in step 7 (see <a href="#option-c">option C</a>).</p>
         </div></li>
         <li><div class="card">
-          <div class="step-head"><h3>Create a solution</h3><label class="step-done" data-jsonly hidden><input type="checkbox" data-step="3">Done<span class="visually-hidden">: create a solution</span></label></div>
-          <p>In the development environment, create a solution with your own publisher, and build everything below inside it (<a href="https://learn.microsoft.com/power-platform/alm/solution-concepts-alm">solution concepts</a>, <a href="https://learn.microsoft.com/power-apps/maker/data-platform/create-solution">create a solution</a>).</p>
+          <div class="step-head"><h3>Create a publisher and a solution</h3><label class="step-done" data-jsonly hidden><input type="checkbox" data-step="3">Done<span class="visually-hidden">: create a publisher and a solution</span></label></div>
+          <ol>
+            <li>In the development environment, go to <strong>Solutions</strong> &gt; <strong>New solution</strong> and create a <strong>new publisher</strong> with your own prefix. This guide uses <code>poc</code>, the reference build's prefix; read it as yours throughout.</li>
+            <li>Create the solution with that publisher. Create everything in steps 4 to 7 <strong>inside the solution</strong>, so the tables, variables, connection reference and flows move together when you promote it.</li>
+          </ol>
+          <p>See <a href="https://learn.microsoft.com/power-platform/alm/solution-concepts-alm">solution concepts</a> and <a href="https://learn.microsoft.com/power-apps/maker/data-platform/create-solution">create a solution</a>.</p>
         </div></li>
         <li><div class="card">
           <div class="step-head"><h3>Create the three tables</h3><label class="step-done" data-jsonly hidden><input type="checkbox" data-step="4">Done<span class="visually-hidden">: create the three tables</span></label></div>
-          <p>Create the tables in the <a href="#data-model">data model</a>, with the columns in <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#dataverse-tables-written-by-the-flows">Dataverse tables</a>, and apply its clean-build changes (<a href="https://learn.microsoft.com/power-apps/maker/data-platform/create-edit-entities-portal">create tables</a>). When a flow sets a choice column, pick the option by its label.</p>
+          <ol>
+            <li><strong>Copilot Interactions</strong>: one row per audit record. Rename the primary name column to <strong>Audit Log ID</strong>, then add the 16 columns in the <a href="#data-model">data model</a>.</li>
+            <li><strong>Copilot Interaction Flow Runs</strong>: the run log, with the two choice columns <strong>Flow State</strong> (Running, Finished) and <strong>Run Type</strong> (Scheduled, Manual) and the four whole-number count columns.</li>
+            <li><strong>Copilot Interaction Flow Run Errors</strong>: one row per failure. In a clean build, add a lookup from each error row to its run.</li>
+          </ol>
+          <p>Use the exact column types and lengths in <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#dataverse-tables-written-by-the-flows">Dataverse tables</a> (<a href="https://learn.microsoft.com/power-apps/maker/data-platform/create-edit-entities-portal">create tables</a>). Choice values come from your publisher, so when a flow sets a choice column, pick the option by its label.</p>
         </div></li>
         <li><div class="card">
           <div class="step-head"><h3>Create the environment variables</h3><label class="step-done" data-jsonly hidden><input type="checkbox" data-step="5">Done<span class="visually-hidden">: create the environment variables</span></label></div>
-          <p>Create the variables in <a href="#env-vars">Environment variables</a>, and set the values for your secret option (<a href="https://learn.microsoft.com/power-apps/maker/data-platform/environmentvariables-power-automate">environment variables in flows</a>).</p>
+          <p>Create only the variables your <a href="#secrets">secret option</a> needs, from the seven in <a href="#env-vars">Environment variables</a>:</p>
+          <ul>
+            <li><strong>Always:</strong> <code>Audit_Tenant</code>, <code>Audit_AppRegID</code>, <code>Audit_Authority</code> and <code>Audit_Audience</code>.</li>
+            <li><strong>Option A or B:</strong> the switch <code>Audit_UsingAKVtruefalse</code>.</li>
+            <li><strong>Option A:</strong> the <strong>Secret</strong>-type variable <code>KeyVaultSecret</code>, pointing at your vault.</li>
+            <li><strong>Option B (not recommended):</strong> the Text variable <code>Audit_Secret</code>.</li>
+            <li><strong>Option C:</strong> your own variables for the certificate's PFX and password, ideally Key Vault-backed.</li>
+          </ul>
+          <p>Leave every <strong>default value</strong> empty or non-sensitive, because defaults are always exported with the solution (<a href="https://learn.microsoft.com/power-apps/maker/data-platform/environmentvariables-power-automate">environment variables in flows</a>).</p>
         </div></li>
         <li><div class="card">
           <div class="step-head"><h3>Create a connection reference</h3><label class="step-done" data-jsonly hidden><input type="checkbox" data-step="6">Done<span class="visually-hidden">: create a connection reference</span></label></div>
-          <p>Create a connection reference for Microsoft Dataverse inside the solution, mapped to a connection owned by the flow owner (<a href="https://learn.microsoft.com/power-apps/maker/data-platform/create-connection-reference">connection references</a>).</p>
+          <p>In the solution, select <strong>New</strong> &gt; <strong>More</strong> &gt; <strong>Connection reference</strong>, choose <strong>Microsoft Dataverse</strong>, and map it to a connection owned by the account that will own the flows. Both flows use this one reference for every Dataverse action. The HTTP actions need no connection: they sign in with the app registration (<a href="https://learn.microsoft.com/power-apps/maker/data-platform/create-connection-reference">connection references</a>).</p>
         </div></li>
         <li><div class="card">
           <div class="step-head"><h3>Build the flows</h3><label class="step-done" data-jsonly hidden><input type="checkbox" data-step="7">Done<span class="visually-hidden">: build the flows</span></label></div>
+          <p>Create a new <strong>scheduled cloud flow</strong> inside the solution (daily recurrence), then add the actions in this order. The <a href="#gallery">screenshots</a> show each part.</p>
           <ol>
-            <li>Build the scheduled flow phase by phase, from <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#phase-a-initialise">Phase A</a> to <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#phases-e-and-f-error-handling-and-completeness">Phases E and F</a>, using the <a href="#gallery">screenshots</a> as a visual guide.</li>
-            <li>Build the <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#the-manual-flow">manual flow</a>, which is the same except for its trigger (two dates), its window and a few listed differences.</li>
-            <li>Turn on the <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#recommended-settings">recommended secure inputs and outputs</a>, and size the <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#loop-limits">loop limits</a> for your volume.</li>
-            <li>Add a note to each action saying why it exists (<a href="https://learn.microsoft.com/power-automate/overview-solution-flows">solution-aware flows</a>).</li>
+            <li><a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#phase-a-initialise">Phase A</a>: initialise the variables and the collection window (one UTC day, from midnight four days ago to midnight three days ago).</li>
+            <li><a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#phase-b-resolve-the-graph-secret">Phase B</a>: resolve the secret for your option, with secure inputs and outputs.</li>
+            <li><a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#phase-c-open-the-run-log">Phase C</a>: add the run log row with <strong>Flow State</strong> set to Running.</li>
+            <li><a href="#http-calls">D1 to D3</a>: create the audit log query, wait for it to finish, then read the records page by page.</li>
+            <li><a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#d4-upsert-each-record">D4</a>: upsert each record into Copilot Interactions and update the run counts.</li>
+            <li><a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#phases-e-and-f-error-handling-and-completeness">Phases E and F</a>: write error rows and fail the run if collection is incomplete.</li>
           </ol>
+          <p>Then build the <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#the-manual-flow">manual flow</a> the same way, with a manual trigger that takes two dates and the few differences listed there. Turn on the <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#recommended-settings">recommended secure inputs and outputs</a>, size the <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#loop-limits">loop limits</a> for your volume, and add a note to each action saying why it exists (<a href="https://learn.microsoft.com/power-automate/overview-solution-flows">solution-aware flows</a>).</p>
         </div></li>
         <li><div class="card">
           <div class="step-head"><h3>Validate</h3><label class="step-done" data-jsonly hidden><input type="checkbox" data-step="8">Done<span class="visually-hidden">: validate</span></label></div>
@@ -1160,7 +1259,7 @@ html.dl-motion .dl-reveal.dl-in { opacity: 1; transform: none; }
         </div></li>
         <li><div class="card">
           <div class="step-head"><h3>Promote it</h3><label class="step-done" data-jsonly hidden><input type="checkbox" data-step="10">Done<span class="visually-hidden">: promote it</span></label></div>
-          <p>Follow <a href="#export-hygiene">Export hygiene</a> first. Then export the solution as managed and import it into test, then production (<a href="https://learn.microsoft.com/power-apps/maker/data-platform/export-solutions">export solutions</a>), and set the environment variable values in each target environment.</p>
+          <p>Before you export, remove the <strong>current value</strong> of every environment variable from the solution, so no secret, tenant ID or client ID leaves the environment. Then export the solution as managed and import it into test, then production (<a href="https://learn.microsoft.com/power-apps/maker/data-platform/export-solutions">export solutions</a>), and set the environment variable values in each target environment.</p>
         </div></li>
       </ol>
     </section>
@@ -1451,26 +1550,11 @@ html.dl-motion .dl-reveal.dl-in { opacity: 1; transform: none; }
       </div>
     </section>
 
-    <section class="section" id="export-hygiene" aria-labelledby="export-hygiene-h">
-      <p class="section-kicker">Sharing your build</p>
-      <h2 id="export-hygiene-h">Export hygiene (ALM)</h2>
-      <div class="callout callout-danger" role="note">
-        <p class="callout-title"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 21h20L12 3z"/><path d="M12 10v5M12 18h.01"/></svg>Exports don't mask values</p>
-        <p>Solution export doesn't mask environment variable values. A Text variable's current value, such as the plain-text secret in option B, is exported in clear text if it's in the solution. Before you export, follow these steps.</p>
-      </div>
-      <ol class="steps">
-        <li>Remove the current value of every environment variable from the solution (<strong>...</strong> &gt; <strong>Remove from this solution</strong>), and keep the default values empty or non-sensitive.</li>
-        <li>Export, unzip the solution file and inspect the workflow JSON, <code>customizations.xml</code> and any <code>environmentvariablevalues.json</code>.</li>
-        <li>Confirm that there's no client secret, token, tenant ID, client ID or email address in any file, and no current-value file at all.</li>
-        <li>Set the values in each target environment after import, or with a <a href="https://learn.microsoft.com/power-platform/alm/conn-ref-env-variables-build-tools">deployment settings file</a>.</li>
-      </ol>
-    </section>
-
     <section class="section" id="origins" aria-labelledby="origins-h">
       <p class="section-kicker">Where the pattern comes from</p>
       <h2 id="origins-h">Origins and credit</h2>
       <p>This build is adapted from the audit log collection pattern in the <a href="https://learn.microsoft.com/power-platform/guidance/coe/starter-kit">Microsoft Power Platform CoE Starter Kit</a>, described in <a href="https://learn.microsoft.com/power-platform/guidance/coe/setup-auditlog-http-graphapi">Collect audit logs using an HTTP action with Microsoft Graph</a>. The kit is open source under the MIT licence at <a href="https://github.com/microsoft/coe-starter-kit">github.com/microsoft/coe-starter-kit</a>. Microsoft describes it as no longer actively maintained, with its core capabilities now in the Power Platform admin center. Credit for the original pattern belongs to the CoE Starter Kit team.</p>
-      <p>This build changes the pattern: it collects only <code>CopilotInteraction</code> records into their own table, logs every run and every failure, lets you choose Key Vault or a plain-text variable for the secret, fails the run loudly when collection is incomplete, and adds a manual back-fill flow. Some legacy actions and variables from earlier versions remain in the reference build and are labelled <strong>Legacy</strong> in the reference. See <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#origins-and-credit">Origins and credit</a> in the action reference.</p>
+      <p>This build changes the pattern: it collects only <code>CopilotInteraction</code> records into their own table, logs every run and every failure, lets you choose Key Vault or a plain-text variable (not recommended) for the secret, fails the run loudly when collection is incomplete, and adds a manual back-fill flow. Some legacy actions and variables from earlier versions remain in the reference build and are labelled <strong>Legacy</strong> in the reference. See <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#origins-and-credit">Origins and credit</a> in the action reference.</p>
     </section>
 
     <section class="section" id="related" aria-labelledby="related-h">
@@ -1501,6 +1585,17 @@ html.dl-motion .dl-reveal.dl-in { opacity: 1; transform: none; }
       </ol>
     </aside>
     <!-- dl-series:end -->
+    <!-- dl-others:start -->
+    <aside class="dl-others" aria-label="More community projects">
+      <p class="dl-others-k">More community projects</p>
+      <ol>
+        <li><a class="dl-card" href="https://ryanbowie.github.io/copilot-studio-powerplatform-solution-reviewer-site/"><span class="dl-no" aria-hidden="true">03</span><strong>Power Platform Solution Reviewer</strong><span class="dl-desc">A Copilot Studio agent that reviews Power Platform solutions, shown on a real canvas app with its full output and setup guidance.</span><span class="dl-go">Visit site →</span></a></li>
+        <li><a class="dl-card" href="https://ryanbowie.github.io/copilot-studio-sharepoint-search-hub/"><span class="dl-no" aria-hidden="true">04</span><strong>SharePoint Search Hub</strong><span class="dl-desc">Hub-and-spoke SharePoint search for Copilot Studio, with results checked against the caller's access and a private Excel export.</span><span class="dl-go">Visit site →</span></a></li>
+        <li><a class="dl-card" href="https://ryanbowie.github.io/copilot-studio-powerbi-agent/"><span class="dl-no" aria-hidden="true">05</span><strong>Power BI Agent</strong><span class="dl-desc">A standard Copilot Studio agent that writes DAX and queries Power BI semantic models as the signed-in user. No Fabric data agent needed.</span><span class="dl-go">Visit site →</span></a></li>
+        <li><a class="dl-card" href="https://ryanbowie.github.io/copilot-studio-documentation-builder/"><span class="dl-no" aria-hidden="true">06</span><strong>Documentation Builder</strong><span class="dl-desc">Template-aligned technical documents from Copilot Studio, comparing the standard and GitHub Copilot harnesses with observed results.</span><span class="dl-go">Visit site →</span></a></li>
+      </ol>
+    </aside>
+    <!-- dl-others:end -->
   </main>
 </div>
 
@@ -1666,16 +1761,7 @@ html.dl-motion .dl-reveal.dl-in { opacity: 1; transform: none; }
     reopened = [];
   });
 
-  /* Approval checklist */
-  const CL_KEY = "cil-checklist-v2";
-  const clItems = $$("#checklist-list > li").map((li) => {
-    const chk = $("input[type=checkbox]", li);
-    const key = chk ? chk.id.replace(/^chk-/, "") : "";
-    return { li, chk, key, owner: key ? document.getElementById("own-" + key) : null };
-  }).filter((x) => x.chk && x.key);
-  const clState = store.json(CL_KEY) || {};
-  const clChecks = clState.checks && typeof clState.checks === "object" ? clState.checks : {};
-  const clOwners = clState.owners && typeof clState.owners === "object" ? clState.owners : {};
+  /* Progress bar */
   const setProgress = (barId, done, total, noun) => {
     const bar = document.getElementById(barId);
     if (!bar) return;
@@ -1686,74 +1772,6 @@ html.dl-motion .dl-reveal.dl-in { opacity: 1; transform: none; }
       p.setAttribute("aria-valuetext", done + " of " + total + " " + noun);
     }
   };
-  const saveChecklist = () => {
-    const checks = {}, owners = {};
-    clItems.forEach((x) => {
-      if (x.chk.checked) checks[x.key] = true;
-      if (x.owner && x.owner.value.trim()) owners[x.key] = x.owner.value;
-    });
-    store.set(CL_KEY, JSON.stringify({ checks, owners }));
-  };
-  const updateChecklist = () => {
-    const done = clItems.filter((x) => x.chk.checked).length;
-    clItems.forEach((x) => x.li.classList.toggle("is-checked", x.chk.checked));
-    setProgress("checklist-bar", done, clItems.length, "agreed");
-    const count = $("#checklist-count");
-    if (count) count.textContent = done + " of " + clItems.length + " agreed";
-  };
-  clItems.forEach((x) => {
-    x.chk.checked = clChecks[x.key] === true;
-    if (x.owner && typeof clOwners[x.key] === "string") x.owner.value = clOwners[x.key];
-    x.chk.addEventListener("change", () => { updateChecklist(); saveChecklist(); });
-    if (x.owner) x.owner.addEventListener("input", saveChecklist);
-  });
-  updateChecklist();
-  const optionLabel = () => {
-    const r = $("input[name='secret-option']:checked");
-    const name = r && r.closest("label") ? $(".choice-name", r.closest("label")) : null;
-    if (!name) return "not chosen";
-    const c = name.cloneNode(true);
-    $$(".badge", c).forEach((b) => { b.textContent = "(" + b.textContent.trim() + ")"; });
-    return c.textContent.replace(/\s+/g, " ").trim();
-  };
-  const localDate = () => {
-    const d = new Date();
-    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
-  };
-  const checklistMarkdown = () => {
-    const done = clItems.filter((x) => x.chk.checked).length;
-    const lines = [
-      "## Copilot Interaction Logging — approval checklist", "",
-      "Build guide: https://github.com/RyanBowie/copilot-interaction-logging", "",
-      "Secret option: " + optionLabel(), "",
-      "Date: " + localDate() + " · " + done + " of " + clItems.length + " agreed", ""
-    ];
-    clItems.forEach((x) => {
-      const label = $("label[for='" + x.chk.id + "']", x.li);
-      const strong = label ? $("strong", label) : null;
-      const title = strong ? strong.textContent.trim().replace(/:\s*$/, "") : x.key;
-      let text = "";
-      if (label) {
-        const c = label.cloneNode(true);
-        const s = $("strong", c);
-        if (s) s.remove();
-        text = c.textContent.replace(/\s+/g, " ").trim();
-      }
-      const owner = x.owner && x.owner.value.trim() ? x.owner.value.trim() : "_not recorded_";
-      lines.push("- [" + (x.chk.checked ? "x" : " ") + "] **" + title + ":** " + text + " — Owner/evidence: " + owner);
-    });
-    return lines.join("\n") + "\n";
-  };
-  const clCopy = $("#checklist-copy");
-  if (clCopy) clCopy.addEventListener("click", () => copyWithFeedback(clCopy, checklistMarkdown(), "Checklist copied as Markdown."));
-  const clReset = $("#checklist-reset");
-  if (clReset) clReset.addEventListener("click", () => {
-    if (!window.confirm("Clear every tick and owner in the approval checklist? This only affects this browser.")) return;
-    clItems.forEach((x) => { x.chk.checked = false; if (x.owner) x.owner.value = ""; });
-    store.del(CL_KEY);
-    updateChecklist();
-    announce("Checklist cleared.");
-  });
   /* Secret option chooser */
   const OPT_KEY = "cil-secret-option";
   const ENV = {
@@ -2009,7 +2027,7 @@ html.dl-motion .dl-reveal.dl-in { opacity: 1; transform: none; }
   // Sections below the fold fade up once as they arrive.
   const fold = window.innerHeight;
   const targets = Array.prototype.filter.call(
-    document.querySelectorAll("main > section:not(.hero), main > .dl-series"),
+    document.querySelectorAll("main > section:not(.hero), main > .dl-series, main > .dl-others"),
     (el) => el.getBoundingClientRect().top > fold
   );
   const io = new IntersectionObserver((entries) => {
