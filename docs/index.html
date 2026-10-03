@@ -28,7 +28,18 @@
 <meta property="og:title" content="Copilot Interaction Logging">
 <meta property="og:description" content="Build guide: collect Purview Copilot interaction audit logs into Dataverse for usage reporting, with an explicit secret-handling decision for builders.">
 <meta property="og:type" content="website">
-<link rel="icon" href="data:,">
+<!-- dl-meta:start -->
+<meta property="og:url" content="https://ryanbowie.github.io/copilot-interaction-logging/">
+<meta property="og:image" content="https://ryanbowie.github.io/copilot-interaction-logging/images/og.png">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="640">
+<meta property="og:image:alt" content="Copilot Interaction Logging, part 2 of 2: a build guide for collecting Purview Copilot interaction audit data into Dataverse.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Copilot Interaction Logging">
+<meta name="twitter:description" content="Build guide: collect Purview Copilot interaction audit logs into Dataverse for usage reporting, with an explicit secret-handling decision for builders.">
+<meta name="twitter:image" content="https://ryanbowie.github.io/copilot-interaction-logging/images/og.png">
+<!-- dl-meta:end -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2028%2028'%3E%3Crect%20width='28'%20height='28'%20rx='7'%20fill='%23b11f4b'/%3E%3Cpath%20d='M8%209h12M8%2014h12M8%2019h7'%20fill='none'%20stroke='%23fff'%20stroke-width='2.5'%20stroke-linecap='round'/%3E%3C/svg%3E">
 <style>
 :root {
   color-scheme: light;
@@ -361,6 +372,88 @@ dialog#lightbox::backdrop { background: var(--cp-overlay); }
   dialog#lightbox { display: none; }
   .gallery img { height: auto; }
 }
+/* design-layer:start */
+/* "Blueprint signal" design layer, shared by both pages. Colours come only from --cp-* variables. */
+.hero { position: relative; isolation: isolate; margin-top: 20px; padding: 48px 28px 32px; }
+.hero::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; border: 1px solid var(--cp-border); border-radius: var(--radius-card); background-color: var(--cp-bg-elevated); background-image: radial-gradient(circle, color-mix(in srgb, var(--cp-border-strong) 45%, transparent) 1px, transparent 1.6px); background-size: 20px 20px; -webkit-mask-image: linear-gradient(to bottom, var(--cp-text) 60%, transparent); mask-image: linear-gradient(to bottom, var(--cp-text) 60%, transparent); }
+.hero::after { content: ""; position: absolute; top: -5px; left: -5px; right: -5px; height: 18px; z-index: -1; pointer-events: none; background: linear-gradient(var(--cp-accent), var(--cp-accent)) left top / 18px 2px no-repeat, linear-gradient(var(--cp-accent), var(--cp-accent)) left top / 2px 18px no-repeat, linear-gradient(var(--cp-accent), var(--cp-accent)) right top / 18px 2px no-repeat, linear-gradient(var(--cp-accent), var(--cp-accent)) right top / 2px 18px no-repeat; }
+.hero h1::after { content: ""; display: block; width: 64px; height: 4px; margin-top: 14px; border-radius: 2px; background: var(--cp-accent); transform-origin: left center; animation: dl-grow 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+@keyframes dl-grow { from { transform: scaleX(0); } }
+
+/* Signal diagram in the hero */
+.dl-signal { margin: 28px 0 16px; border: 1px solid var(--cp-border); border-radius: var(--radius-card); background: var(--cp-surface); box-shadow: var(--card-shadow); overflow: hidden; }
+.dl-signal figcaption { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px; margin: 0; padding: 10px 16px; border-bottom: 1px solid var(--cp-border); background: var(--cp-surface-soft); color: var(--cp-text-soft); font: 600 0.72rem/1.4 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
+.dl-signal figcaption b { color: var(--cp-accent); }
+.dl-scroll { overflow-x: auto; padding: 12px; }
+.dl-scroll:focus-visible, .dl-wide:focus-visible { outline: 2px solid var(--cp-accent); outline-offset: -2px; }
+/* Wide diagrams on small screens (classes set by the script): a cue, and a fade until the end is reached */
+.dl-wide::before { content: "Scroll sideways for the full diagram →"; content: "Scroll sideways for the full diagram →" / ""; display: block; margin: 0 0 8px; color: var(--cp-accent); font: 700 0.7rem/1.4 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
+.dl-more { -webkit-mask-image: linear-gradient(to right, var(--cp-text) calc(100% - 56px), transparent); mask-image: linear-gradient(to right, var(--cp-text) calc(100% - 56px), transparent); }
+.dl-scroll svg { display: block; width: 100%; min-width: 660px; height: auto; font-family: var(--font); }
+.dl-node rect { fill: var(--cp-surface-soft); stroke: var(--cp-border-strong); stroke-width: 1; }
+.dl-node text { fill: var(--cp-text); font-size: 13px; font-weight: 600; }
+.dl-node text.dl-sub { fill: var(--cp-text-soft); font-size: 11px; font-weight: 400; }
+.dl-node .dl-badge { fill: var(--cp-surface); stroke: var(--cp-border-strong); }
+.dl-node text.dl-letter { fill: var(--cp-text); font: 700 11px var(--mono); }
+.dl-node.dl-hot rect { fill: var(--cp-accent-soft); stroke: var(--cp-accent); stroke-width: 1.5; }
+.dl-node.dl-hot .dl-badge { fill: var(--cp-accent); stroke: var(--cp-accent); }
+.dl-node.dl-hot text.dl-letter { fill: var(--cp-accent-fg); }
+.dl-node.dl-hot text.dl-sub { fill: var(--cp-accent); font-weight: 600; }
+.dl-path { fill: none; stroke: var(--cp-border-strong); stroke-width: 1.5; stroke-dasharray: 3 6; animation: dl-flow 1.4s linear infinite; }
+.dl-path.dl-hot { stroke: var(--cp-accent); stroke-width: 2.25; }
+.dl-note { fill: var(--cp-text-muted); font: 600 10.5px var(--mono); letter-spacing: 0.06em; }
+.dl-note.dl-hot { fill: var(--cp-accent); }
+@keyframes dl-flow { to { stroke-dashoffset: -18; } }
+
+/* Bento "at a glance" facts with a feature tile */
+.hero .facts { max-width: none; }
+.hero .facts strong { font-variant-numeric: tabular-nums; }
+.hero .facts li { transition: border-color 0.2s ease, transform 0.2s ease; }
+.hero .facts li:hover { border-color: color-mix(in srgb, var(--cp-accent) 55%, var(--cp-border)); transform: translateY(-2px); }
+.hero .facts li:first-child { background: linear-gradient(var(--cp-accent-soft), var(--cp-accent-soft)), var(--cp-surface); border-color: color-mix(in srgb, var(--cp-accent) 40%, var(--cp-border)); }
+.hero .facts li:first-child span, .dl-card[aria-current="page"] .dl-desc { color: color-mix(in srgb, var(--cp-text) 82%, transparent); }
+.hero .facts li:first-child strong { font-size: 1.7rem; line-height: 1.15; color: var(--cp-accent); }
+@media (min-width: 440px) { .hero .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } .hero .facts li:first-child { grid-column: span 2; } }
+@media (min-width: 440px) and (max-width: 779px) { .hero .facts li:last-child:nth-child(even) { grid-column: span 2; } }
+@media (min-width: 780px) { .hero .facts { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+/* Numbered chapters */
+main { counter-reset: dlch; }
+.section-kicker::before { counter-increment: dlch; content: counter(dlch, decimal-leading-zero) " · "; content: counter(dlch, decimal-leading-zero) " · " / ""; color: var(--cp-text-soft); font-family: var(--mono); }
+
+/* Reading progress and reveal on scroll (motion only when allowed; see the script) */
+#dl-progress { position: fixed; z-index: 60; top: 0; left: 0; width: 100%; height: 3px; background: var(--cp-accent); transform: scaleX(var(--dl-p, 0)); transform-origin: 0 50%; pointer-events: none; }
+html.dl-motion .dl-reveal { opacity: 0; transform: translateY(16px); transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1); }
+html.dl-motion .dl-reveal.dl-in { opacity: 1; transform: none; }
+
+/* Browser-frame chrome on screenshots */
+.shot-btn::before, .shot a[data-lightbox]::before { content: ""; display: block; height: 22px; border-bottom: 1px solid var(--cp-border); background: radial-gradient(circle, var(--cp-accent) 0 3px, transparent 3.6px) 12px 50% / 10px 10px no-repeat, radial-gradient(circle, var(--cp-border-strong) 0 3px, transparent 3.6px) 28px 50% / 10px 10px no-repeat, radial-gradient(circle, var(--cp-border-strong) 0 3px, transparent 3.6px) 44px 50% / 10px 10px no-repeat, var(--cp-surface-soft); }
+.shot a[data-lightbox]::before { margin: -8px -8px 8px; border-radius: calc(var(--radius) - 1px) calc(var(--radius) - 1px) 0 0; }
+
+/* Two-part series band */
+.dl-series { margin: 72px 0 8px; padding: 24px; border: 1px solid var(--cp-border); border-radius: var(--radius-card); background-color: var(--cp-bg-elevated); background-image: radial-gradient(circle, color-mix(in srgb, var(--cp-border-strong) 40%, transparent) 1px, transparent 1.6px); background-size: 20px 20px; }
+.dl-series-k { margin: 0 0 14px; color: var(--cp-accent); font: 700 0.75rem/1.4 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
+.dl-series ol { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin: 0; padding: 0; list-style: none; }
+.dl-series li { margin: 0; }
+.dl-card { display: flex; flex-direction: column; gap: 6px; height: 100%; padding: 18px 20px; border: 1px solid var(--cp-border); border-radius: var(--radius); background: var(--cp-surface); box-shadow: var(--card-shadow); color: var(--cp-text); text-decoration: none; transition: border-color 0.2s ease, transform 0.2s ease; }
+.dl-card:hover, .dl-card:focus-visible { border-color: var(--cp-accent); color: var(--cp-text); transform: translateY(-2px); }
+.dl-card[aria-current="page"] { border-color: color-mix(in srgb, var(--cp-accent) 45%, var(--cp-border)); background: linear-gradient(var(--cp-accent-soft), var(--cp-accent-soft)), var(--cp-surface); }
+.dl-no { color: var(--cp-accent); font: 700 1.9rem/1 var(--mono); }
+.dl-card strong { font-size: 1.05rem; }
+.dl-desc { color: var(--cp-text-muted); font-size: 0.9rem; }
+.dl-go { margin-top: auto; padding-top: 6px; color: var(--cp-accent); font-size: 0.9rem; font-weight: 600; }
+.dl-here { align-self: flex-start; margin-top: auto; padding: 2px 10px; border-radius: 999px; background: var(--cp-accent); color: var(--cp-accent-fg); font: 700 0.7rem/1.6 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
+
+@media (max-width: 600px) { .hero { padding: 36px 14px 20px; } .dl-series { padding: 18px 14px; } }
+@media print {
+  #dl-progress, .hero::before, .hero::after, .shot-btn::before, .shot a[data-lightbox]::before, .dl-wide::before { display: none; }
+  .dl-more { -webkit-mask-image: none; mask-image: none; }
+  .hero { margin-top: 0; padding: 24px 0 0; }
+  .dl-series { background-image: none; }
+  .dl-reveal { opacity: 1 !important; transform: none !important; }
+  .dl-path { animation: none; }
+}
+/* design-layer:end */
 </style>
 </head>
 <body>
@@ -450,6 +543,36 @@ dialog#lightbox::backdrop { background: var(--cp-overlay); }
         <a class="btn" href="#build">Build steps</a>
         <a class="btn" href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md">Action reference</a>
       </div>
+      <!-- dl-hero:start -->
+      <figure class="dl-signal">
+        <figcaption><span><b>02</b> / 02 · Capture</span><span>Audit log → Graph → flows → Dataverse</span></figcaption>
+        <div class="dl-scroll" tabindex="0" role="region" aria-label="Capture pipeline diagram (scrolls sideways on small screens)">
+          <svg viewBox="0 0 960 250" role="img" aria-labelledby="dl-cil-t dl-cil-d">
+            <title id="dl-cil-t">Capture pipeline at a glance</title>
+            <desc id="dl-cil-d">Copilot interaction records in the Microsoft Purview audit log are queried through the Microsoft Graph auditLogQuery API by two Power Automate flows: a scheduled daily flow that collects one UTC day with a three-day lag, and a manual back-fill flow that takes a start and end date. Both write to three Dataverse tables: interactions, flow runs and errors. Power BI or any Dataverse client reports from there. Only metadata is collected, never prompt or response text.</desc>
+            <text class="dl-note" x="10" y="30">SOURCE</text>
+            <text class="dl-note" x="200" y="30">API</text>
+            <text class="dl-note dl-hot" x="410" y="30">2 FLOWS</text>
+            <text class="dl-note" x="630" y="30">3 TABLES</text>
+            <text class="dl-note" x="830" y="30">REPORT</text>
+            <path class="dl-path" d="M160 130 H200"/>
+            <path class="dl-path dl-hot" d="M360 130 C385 130 385 85 410 85"/>
+            <path class="dl-path dl-hot" d="M360 130 C385 130 385 175 410 175"/>
+            <path class="dl-path dl-hot" d="M580 85 C605 85 605 130 630 130"/>
+            <path class="dl-path dl-hot" d="M580 175 C605 175 605 130 630 130"/>
+            <path class="dl-path" d="M790 130 H830"/>
+            <g class="dl-node"><rect x="10" y="105" width="150" height="50" rx="8"/><text x="85" y="126" text-anchor="middle">Purview audit log</text><text class="dl-sub" x="85" y="143" text-anchor="middle">Copilot interactions</text></g>
+            <g class="dl-node"><rect x="200" y="105" width="160" height="50" rx="8"/><text x="280" y="126" text-anchor="middle">Microsoft Graph</text><text class="dl-sub" x="280" y="143" text-anchor="middle">auditLogQuery API</text></g>
+            <g class="dl-node dl-hot"><rect x="410" y="60" width="170" height="50" rx="8"/><text x="495" y="81" text-anchor="middle">Scheduled daily</text><text class="dl-sub" x="495" y="98" text-anchor="middle">one UTC day, 3-day lag</text></g>
+            <g class="dl-node dl-hot"><rect x="410" y="150" width="170" height="50" rx="8"/><text x="495" y="171" text-anchor="middle">Manual back-fill</text><text class="dl-sub" x="495" y="188" text-anchor="middle">StartDate → EndDate</text></g>
+            <g class="dl-node"><rect x="630" y="90" width="160" height="80" rx="10"/><text x="710" y="117" text-anchor="middle">Dataverse</text><text class="dl-sub" x="710" y="137" text-anchor="middle">Interactions</text><text class="dl-sub" x="710" y="154" text-anchor="middle">Flow runs · Errors</text></g>
+            <g class="dl-node"><rect x="830" y="95" width="120" height="70" rx="8"/><text x="890" y="121" text-anchor="middle">Reporting</text><text class="dl-sub" x="890" y="139" text-anchor="middle">Power BI or any</text><text class="dl-sub" x="890" y="154" text-anchor="middle">Dataverse client</text></g>
+            <text class="dl-note" x="10" y="238">METADATA ONLY · NO PROMPT OR RESPONSE TEXT</text>
+            <text class="dl-note" x="950" y="238" text-anchor="end">FEEDS LANE C OF PART 01</text>
+          </svg>
+        </div>
+      </figure>
+      <!-- dl-hero:end -->
       <ul class="facts" aria-label="At a glance">
         <li><strong>Metadata only</strong><span>No prompt or response text</span></li>
         <li><strong>3 Dataverse tables</strong><span>Interactions, runs and errors</span></li>
@@ -1311,6 +1434,15 @@ dialog#lightbox::backdrop { background: var(--cp-overlay); }
         <li><a href="https://learn.microsoft.com/purview/audit-solutions-overview">Auditing solutions in Microsoft Purview</a></li>
       </ul>
     </section>
+    <!-- dl-series:start -->
+    <aside class="dl-series" aria-label="Two-part series">
+      <p class="dl-series-k">A two-part series</p>
+      <ol>
+        <li><a class="dl-card" href="https://ryanbowie.github.io/custom-agent-reporting-architecture/"><span class="dl-no" aria-hidden="true">01</span><strong>Custom Agent Reporting – Architecture</strong><span class="dl-desc">Where this data can go next: a custom Power BI model that reports on agents across Copilot Studio, Agent Builder and Microsoft Foundry, with this build as its lane C.</span><span class="dl-go">Open part 01 →</span></a></li>
+        <li><a class="dl-card" href="#top" aria-current="page"><span class="dl-no" aria-hidden="true">02</span><strong>Copilot Interaction Logging</strong><span class="dl-desc">This build guide: Copilot interaction records from the Purview audit log, collected into Dataverse by two Power Automate flows.</span><span class="dl-here">You are here</span></a></li>
+      </ol>
+    </aside>
+    <!-- dl-series:end -->
   </main>
 </div>
 
@@ -1777,5 +1909,90 @@ dialog#lightbox::backdrop { background: var(--cp-overlay); }
 })();
 </script>
 
+<!-- design-layer-js:start -->
+<script>
+(() => {
+  "use strict";
+  const root = document.documentElement;
+  const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const motion = !reduce && "IntersectionObserver" in window && "requestAnimationFrame" in window;
+
+  // Reading progress bar along the top edge.
+  const bar = document.createElement("div");
+  bar.id = "dl-progress";
+  bar.setAttribute("aria-hidden", "true");
+  document.body.appendChild(bar);
+  let queued = false;
+  const paint = () => {
+    queued = false;
+    const max = root.scrollHeight - window.innerHeight;
+    const p = max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
+    bar.style.setProperty("--dl-p", p.toFixed(4));
+  };
+  const queue = () => {
+    if (queued) return;
+    queued = true;
+    if (window.requestAnimationFrame) window.requestAnimationFrame(paint); else paint();
+  };
+  window.addEventListener("scroll", queue, { passive: true });
+  window.addEventListener("resize", queue);
+  paint();
+
+  // Wide diagrams scroll sideways on small screens: cue them, make them keyboard
+  // scrollable and fade the clipped edge until the reader reaches the end.
+  const wides = Array.prototype.slice.call(document.querySelectorAll(".dl-scroll, .diagram-wrap"));
+  const edge = (el) => {
+    const over = el.scrollWidth - el.clientWidth;
+    el.classList.toggle("dl-wide", over > 4);
+    el.classList.toggle("dl-more", over - el.scrollLeft > 4);
+    if (over > 4 && !el.hasAttribute("tabindex")) {
+      const t = el.querySelector("svg title");
+      el.tabIndex = 0;
+      el.setAttribute("role", "region");
+      el.setAttribute("aria-label", (t ? t.textContent : "Diagram") + " (scrolls sideways)");
+    }
+  };
+  wides.forEach((el) => { el.addEventListener("scroll", () => edge(el), { passive: true }); edge(el); });
+  window.addEventListener("resize", () => wides.forEach(edge));
+
+  if (!motion) return;
+  root.classList.add("dl-motion");
+
+  // Sections below the fold fade up once as they arrive.
+  const fold = window.innerHeight;
+  const targets = Array.prototype.filter.call(
+    document.querySelectorAll("main > section:not(.hero), main > .dl-series"),
+    (el) => el.getBoundingClientRect().top > fold
+  );
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e) => {
+      if (!e.isIntersecting) return;
+      e.target.classList.add("dl-in");
+      io.unobserve(e.target);
+    });
+  }, { rootMargin: "0px 0px -6% 0px" });
+  targets.forEach((el) => { el.classList.add("dl-reveal"); io.observe(el); });
+
+  // Hero numbers count up once, only when the facts are already on screen.
+  const facts = document.querySelector(".hero .facts");
+  if (!facts || facts.getBoundingClientRect().top > fold) return;
+  const nums = [];
+  Array.prototype.forEach.call(facts.querySelectorAll("strong"), (el) => {
+    const m = /^(\d+)(\D.*)?$/.exec(el.textContent.trim());
+    if (m && el.children.length === 0) nums.push({ el, n: parseInt(m[1], 10), rest: m[2] || "" });
+  });
+  if (!nums.length) return;
+  const t0 = performance.now();
+  const step = (now) => {
+    const k = Math.min(1, (now - t0) / 900);
+    const eased = 1 - Math.pow(1 - k, 3);
+    nums.forEach((x) => { x.el.textContent = Math.round(x.n * eased) + x.rest; });
+    if (k < 1) window.requestAnimationFrame(step);
+  };
+  nums.forEach((x) => { x.el.textContent = "0" + x.rest; });
+  window.requestAnimationFrame(step);
+})();
+</script>
+<!-- design-layer-js:end -->
 </body>
 </html>

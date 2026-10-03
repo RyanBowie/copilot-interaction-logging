@@ -1,5 +1,7 @@
 # Copilot Interaction Logging
 
+[![Copilot Interaction Logging: collect Copilot interaction metadata from the Purview audit log into Dataverse with two Power Automate flows](docs/images/og.png)](https://ryanbowie.github.io/copilot-interaction-logging/)
+
 > **Community project. This is not a Microsoft product.** It is a personal project shared as-is under the [MIT licence](LICENSE). Microsoft does not support it, and no SLA or warranty applies. Read the whole of this page, then build and test in a non-production environment and get the approvals listed below **before** you build it anywhere that holds real data.
 
 Copilot Interaction Logging is a build guide. It shows how to collect **metadata** about Microsoft 365 Copilot and Copilot Studio interactions from the Microsoft Purview unified audit log into Dataverse, using two Power Automate cloud flows and the Microsoft Graph audit log query API. From Dataverse you can report on usage with Power BI or any Dataverse client.
@@ -9,7 +11,7 @@ The build collects no prompt or response text.
 > [!IMPORTANT]
 > **Documentation only.** No solution package, flow export or source code is published. This page and the [action-by-action reference](docs/ACTION_REFERENCE.md) describe a tested reference build in enough detail for you to build your own. You own, secure and maintain whatever you build.
 
-**Documentation site:** `https://ryanbowie.github.io/copilot-interaction-logging/` (available once the repository is public) · [Action reference](docs/ACTION_REFERENCE.md) · [Changelog](CHANGELOG.md) · [Security](SECURITY.md)
+**Documentation site:** <https://ryanbowie.github.io/copilot-interaction-logging/> · [Action reference](docs/ACTION_REFERENCE.md) · [Changelog](CHANGELOG.md) · [Security](SECURITY.md)
 
 ## Contents
 
@@ -434,7 +436,7 @@ This build changes the pattern: it collects only `CopilotInteraction` records in
 ## Related
 
 - [Action reference](docs/ACTION_REFERENCE.md): every action in both flows, what it does and why it exists.
-- Documentation site: `https://ryanbowie.github.io/copilot-interaction-logging/` (available once the repository is public).
+- [Documentation site](https://ryanbowie.github.io/copilot-interaction-logging/): this guide as a single page, with an architecture diagram, annotated screenshots and a build-step tracker.
 - [Custom Agent Reporting – Architecture](https://github.com/RyanBowie/custom-agent-reporting-architecture): a reference architecture for tenant-wide agent reporting that uses this build as its interaction-telemetry source.
 - Microsoft Purview: [Audit logs for Copilot and AI applications](https://learn.microsoft.com/purview/audit-copilot), [get started with auditing](https://learn.microsoft.com/purview/audit-get-started) and [auditing solutions](https://learn.microsoft.com/purview/audit-solutions-overview).
 
