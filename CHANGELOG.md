@@ -7,6 +7,15 @@ Notable changes to this guide. The guide is documentation only: no solution pack
 ### Added
 
 - **Custom connector recommendation.** The flows call Graph with HTTP actions because they're adapted from the CoE Starter Kit pattern. The guide now recommends reviewing them and considering a custom connector instead. It sets out the benefits and what to check first, including the change of sign-in, because custom connectors don't support the client credentials grant. See [Recommended: consider a custom connector](README.md#recommended-consider-a-custom-connector) and, on the site, [The HTTP calls](https://ryanbowie.github.io/copilot-interaction-logging/#custom-connector).
+- **AI Video Creation Guide.** Added to More community projects on the site and in the README.
+
+### Changed
+
+- **Origins and credit.** Now explains that the very first build was created manually, and that later versions and changes were made with GitHub Copilot using the Power Automate plugin skills from [microsoft/power-platform-skills](https://github.com/microsoft/power-platform-skills). The solution is presented as a vibe-coded demonstration of pulling data from the audit log with Power Automate.
+
+### Removed
+
+- **Back-fill helper on the site.** The interactive date calculator is gone. The manual back-fill guidance stays: EndDate is exclusive, keep EndDate at least 48 hours in the past and StartDate within 180 days, and allow for British Summer Time.
 
 ## 2026-10-03
 

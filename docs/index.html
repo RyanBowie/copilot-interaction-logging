@@ -280,8 +280,7 @@ tbody th { font-weight: 600; }
 tbody tr:last-child > * { border-bottom: 0; }
 tr.is-relevant > * { background: var(--cp-highlight); }
 .nowrap { white-space: nowrap; }
-#bf-table td { white-space: nowrap; }
-#bf-table thead th, table.wrap-head thead th { white-space: normal; }
+table.wrap-head thead th { white-space: normal; }
 /* Narrow screens: the script labels each cell and adds .stack, so each row becomes a card */
 @media (max-width: 640px) {
   table.stack, table.stack tbody, table.stack tr, table.stack th, table.stack td { display: block; }
@@ -339,7 +338,7 @@ details[open] > summary { border-bottom: 1px solid var(--cp-border); }
 .step-done { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--cp-text-muted); cursor: pointer; }
 
 /* Forms, progress */
-input[type="text"], input[type="date"], input[type="search"] { padding: 6px 10px; border: 1px solid var(--cp-border-strong); border-radius: var(--radius); background: var(--cp-surface); color: var(--cp-text); font: inherit; }
+input[type="text"], input[type="search"] { padding: 6px 10px; border: 1px solid var(--cp-border-strong); border-radius: var(--radius); background: var(--cp-surface); color: var(--cp-text); font: inherit; }
 input[type="checkbox"], input[type="radio"] { width: 18px; height: 18px; margin: 0; accent-color: var(--cp-accent); flex: none; }
 .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 12px 0; }
 .progress { flex: 1 1 200px; max-width: 360px; height: 10px; overflow: hidden; border: 1px solid var(--cp-border); border-radius: 999px; background: var(--cp-surface-soft); }
@@ -347,10 +346,8 @@ input[type="checkbox"], input[type="radio"] { width: 18px; height: 18px; margin:
 .field { display: flex; flex-direction: column; gap: 4px; font-size: 0.9rem; }
 .field > label, .field > span { font-weight: 600; }
 .form-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px; margin: 12px 0; }
-.check-inline { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
 .msg { margin: 8px 0; padding: 8px 12px; border: 1px solid var(--cp-border); border-left-width: 4px; border-radius: var(--radius); font-size: 0.9rem; }
 .msg-warn { border-left-color: var(--cp-warning); background: var(--cp-surface-soft); background: color-mix(in srgb, var(--cp-warning) 10%, var(--cp-surface)); }
-.msg-error { border-left-color: var(--cp-danger); background: var(--cp-surface-soft); background: color-mix(in srgb, var(--cp-danger) 8%, var(--cp-surface)); }
 
 /* Secret chooser */
 .choice-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 16px 0; padding: 0; border: 0; }
@@ -1435,24 +1432,6 @@ html.dl-motion .dl-reveal.dl-in { opacity: 1; transform: none; }
           <li><strong>British Summer Time.</strong> During BST, the reference build's manual window starts and ends at 01:00 UTC, so it misses the first hour of StartDate. Start one day earlier, or apply the fix in <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#the-manual-flow">The manual flow</a>: <code>@{triggerBody()?['date']}T00:00:00Z</code>.</li>
         </ul>
       </div>
-      <div class="card" id="backfill" data-jsonly hidden>
-        <h3>Backfill helper</h3>
-        <p class="small muted">Enter the first and last days you want collected (both inclusive, UTC calendar days). The helper works out the manual-flow StartDate and EndDate values and checks them against the limits above. Nothing is sent anywhere.</p>
-        <div class="form-row">
-          <div class="field"><label for="bf-first">First day to collect</label><input type="date" id="bf-first"></div>
-          <div class="field"><label for="bf-last">Last day to collect (inclusive)</label><input type="date" id="bf-last"></div>
-          <label class="check-inline"><input type="checkbox" id="bf-split" checked>One run per day (recommended for busy tenants)</label>
-        </div>
-        <div id="bf-msgs" aria-live="polite"></div>
-        <div class="table-wrap">
-          <table id="bf-table" data-nostack>
-            <caption class="visually-hidden">Manual flow runs to submit</caption>
-            <thead><tr><th scope="col">Run</th><th scope="col">StartDate</th><th scope="col">EndDate (exclusive)</th></tr></thead>
-            <tbody id="bf-body"></tbody>
-          </table>
-        </div>
-        <div class="toolbar"><button type="button" class="btn btn-sm" id="bf-copy">Copy runs</button><span class="small muted">Copies tab-separated rows for a change ticket or spreadsheet.</span></div>
-      </div>
       <div class="grid-2">
         <div class="card">
           <h3>Volume</h3>
@@ -1572,6 +1551,10 @@ html.dl-motion .dl-reveal.dl-in { opacity: 1; transform: none; }
       <h2 id="origins-h">Origins and credit</h2>
       <p>This build is adapted from the audit log collection pattern in the <a href="https://learn.microsoft.com/power-platform/guidance/coe/starter-kit">Microsoft Power Platform CoE Starter Kit</a>, described in <a href="https://learn.microsoft.com/power-platform/guidance/coe/setup-auditlog-http-graphapi">Collect audit logs using an HTTP action with Microsoft Graph</a>. The kit is open source under the MIT licence at <a href="https://github.com/microsoft/coe-starter-kit">github.com/microsoft/coe-starter-kit</a>. Microsoft describes it as no longer actively maintained, with its core capabilities now in the Power Platform admin center. Credit for the original pattern belongs to the CoE Starter Kit team.</p>
       <p>This build changes the pattern: it collects only <code>CopilotInteraction</code> records into their own table, logs every run and every failure, lets you choose Key Vault or a plain-text variable (not recommended) for the secret, fails the run loudly when collection is incomplete, and adds a manual back-fill flow. Some legacy actions and variables from earlier versions remain in the reference build and are labelled <strong>Legacy</strong> in the reference. It keeps the kit's HTTP actions for the Graph calls; for your own build, consider a <a href="#custom-connector">custom connector</a> instead. See <a href="https://github.com/RyanBowie/copilot-interaction-logging/blob/main/docs/ACTION_REFERENCE.md#origins-and-credit">Origins and credit</a> in the action reference.</p>
+      <div class="callout callout-info" role="note" id="built-with-copilot">
+        <p class="callout-title"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5h.01"/></svg>A vibe-coded demonstration</p>
+        <p>The very first build was created manually. Further versions and changes have since been made with GitHub Copilot, using the skills in the <a href="https://github.com/microsoft/power-platform-skills/blob/main/plugins/power-automate/README.md">Power Automate plugin</a> from <a href="https://github.com/microsoft/power-platform-skills">microsoft/power-platform-skills</a>. Treat this solution as a vibe-coded demonstration of how Power Automate can pull data from the audit log, and review every action before you use it in your own build.</p>
+      </div>
     </section>
 
     <section class="section" id="related" aria-labelledby="related-h">
@@ -1610,6 +1593,7 @@ html.dl-motion .dl-reveal.dl-in { opacity: 1; transform: none; }
         <li><a class="dl-card" href="https://ryanbowie.github.io/copilot-studio-sharepoint-search-hub/"><span class="dl-no" aria-hidden="true">04</span><strong>SharePoint Search Hub</strong><span class="dl-desc">Hub-and-spoke SharePoint search for Copilot Studio, with results checked against the caller's access and a private Excel export.</span><span class="dl-go">Visit site →</span></a></li>
         <li><a class="dl-card" href="https://ryanbowie.github.io/copilot-studio-powerbi-agent/"><span class="dl-no" aria-hidden="true">05</span><strong>Power BI Agent</strong><span class="dl-desc">A standard Copilot Studio agent that writes DAX and queries Power BI semantic models as the signed-in user. No Fabric data agent needed.</span><span class="dl-go">Visit site →</span></a></li>
         <li><a class="dl-card" href="https://ryanbowie.github.io/copilot-studio-documentation-builder/"><span class="dl-no" aria-hidden="true">06</span><strong>Documentation Builder</strong><span class="dl-desc">Template-aligned technical documents from Copilot Studio, comparing the standard and GitHub Copilot harnesses with observed results.</span><span class="dl-go">Visit site →</span></a></li>
+        <li><a class="dl-card" href="https://ryanbowie.github.io/ai-video-creation-guide/"><span class="dl-no" aria-hidden="true">07</span><strong>AI Video Creation Guide</strong><span class="dl-desc">Make code-drawn animated videos from one prompt with Claude Opus 5.5 in the GitHub Copilot app, with prompts, skills and examples.</span><span class="dl-go">Visit site →</span></a></li>
       </ol>
     </aside>
     <!-- dl-others:end -->
@@ -1647,14 +1631,13 @@ html.dl-motion .dl-reveal.dl-in { opacity: 1; transform: none; }
   const DAY = 86400000;
   const utcToday = () => { const n = new Date(); return Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate()); };
   const iso = (t) => new Date(t).toISOString().slice(0, 10);
-  const parseDate = (s) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ""); return m ? Date.UTC(+m[1], +m[2] - 1, +m[3]) : NaN; };
   const reduceMotion = () => !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
 
   $$("[data-jsonly]").forEach((el) => el.removeAttribute("hidden"));
 
   /* Tables: label each cell with its column header so narrow screens can show rows as cards */
   const stackTable = (table) => {
-    if (!table || table.hasAttribute("data-nostack")) return;
+    if (!table) return;
     const heads = $$("thead th", table).map((th) => th.textContent.replace(/\s+/g, " ").trim());
     table.setAttribute("role", "table");
     $$("thead, tbody", table).forEach((g) => g.setAttribute("role", "rowgroup"));
@@ -1885,65 +1868,6 @@ html.dl-motion .dl-reveal.dl-in { opacity: 1; transform: none; }
   const valStart = $("#val-start"), valEnd = $("#val-end");
   if (valStart) valStart.textContent = iso(today - 4 * DAY);
   if (valEnd) valEnd.textContent = iso(today - 3 * DAY);
-
-  /* Backfill helper */
-  const bfFirst = $("#bf-first"), bfLast = $("#bf-last"), bfSplit = $("#bf-split");
-  const bfMsgs = $("#bf-msgs"), bfBody = $("#bf-body"), bfCopy = $("#bf-copy");
-  let bfRuns = [];
-  const lastSunday = (y, m) => { const d = new Date(Date.UTC(y, m + 1, 0)); return d.getUTCDate() - d.getUTCDay(); };
-  const inBST = (t) => {
-    const y = new Date(t).getUTCFullYear();
-    return t >= Date.UTC(y, 2, lastSunday(y, 2), 1) && t < Date.UTC(y, 9, lastSunday(y, 9), 1);
-  };
-  const renderBackfill = () => {
-    if (!bfFirst || !bfLast || !bfMsgs || !bfBody) return;
-    const first = parseDate(bfFirst.value), last = parseDate(bfLast.value);
-    const msgs = [];
-    const add = (kind, html) => msgs.push('<p class="msg msg-' + kind + '">' + html + "</p>");
-    bfRuns = [];
-    if (isNaN(first) || isNaN(last)) {
-      add("warn", "Enter both dates to see the runs.");
-    } else if (last < first) {
-      add("error", "<strong>The last day is before the first day.</strong> Swap the dates.");
-    } else {
-      const days = Math.round((last - first) / DAY) + 1;
-      if (bfSplit && bfSplit.checked) {
-        if (days > 180) add("error", "<strong>That would be " + days + " runs.</strong> The helper lists at most 180. Choose a shorter range; Purview Audit (Standard) keeps only 180 days anyway.");
-        else for (let i = 0; i < days; i++) bfRuns.push([first + i * DAY, first + (i + 1) * DAY]);
-      } else {
-        bfRuns.push([first, last + DAY]);
-        if (days > 7) add("warn", "<strong>One run would cover " + days + " days.</strong> Every run has the same 10-hour paging timeout, so a busy tenant may not finish. Consider <em>One run per day</em>.");
-      }
-      if (bfRuns.length) {
-        const now = Date.now();
-        const start = bfRuns[0][0], end = bfRuns[bfRuns.length - 1][1];
-        if (end > now - 48 * 3600000) add("warn", "<strong>EndDate " + iso(end) + " is less than 48 hours ago,</strong> so Purview may not have every record yet. Make the last day " + iso(today - 3 * DAY) + " or earlier, or run it again later; overlapping runs are safe.");
-        if (start < now - 180 * DAY) add("warn", "<strong>StartDate " + iso(start) + " is more than 180 days ago.</strong> Purview Audit (Standard) keeps 180 days, so the earliest days may return nothing.");
-        if (inBST(start)) add("warn", "<strong>" + iso(start) + " is in British Summer Time,</strong> so the manual flow's window starts at 01:00 UTC, not 00:00, and that day's first hour would be missed. Start one day earlier (first day " + iso(start - DAY) + "); the overlap is harmless.");
-      }
-    }
-    const html = msgs.join("");
-    if (bfMsgs.innerHTML !== html) bfMsgs.innerHTML = html;
-    bfBody.replaceChildren(...bfRuns.map((r, i) => {
-      const tr = document.createElement("tr");
-      [String(i + 1), iso(r[0]), iso(r[1])].forEach((v) => { const td = document.createElement("td"); td.textContent = v; tr.appendChild(td); });
-      return tr;
-    }));
-    if (bfCopy) bfCopy.disabled = !bfRuns.length;
-  };
-  if (bfFirst && !bfFirst.value) bfFirst.value = iso(today - 7 * DAY);
-  if (bfLast && !bfLast.value) bfLast.value = iso(today - 4 * DAY);
-  [bfFirst, bfLast, bfSplit].forEach((el) => {
-    if (!el) return;
-    el.addEventListener("input", renderBackfill);
-    el.addEventListener("change", renderBackfill);
-  });
-  renderBackfill();
-  if (bfCopy) bfCopy.addEventListener("click", () => {
-    if (!bfRuns.length) { announce("There are no runs to copy."); return; }
-    const tsv = ["Run\tStartDate\tEndDate"].concat(bfRuns.map((r, i) => (i + 1) + "\t" + iso(r[0]) + "\t" + iso(r[1]))).join("\n") + "\n";
-    copyWithFeedback(bfCopy, tsv, "Copied " + bfRuns.length + (bfRuns.length === 1 ? " run." : " runs."));
-  });
 
   /* Troubleshooting filter */
   const tsFilter = $("#ts-filter");

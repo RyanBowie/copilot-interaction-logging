@@ -502,12 +502,14 @@ This build is adapted from the audit log collection pattern in the [Microsoft Po
 
 This build changes the pattern: it collects only `CopilotInteraction` records into their own table, logs every run and every failure, lets you choose Key Vault or a plain-text variable (not recommended) for the secret, fails the run loudly when collection is incomplete, and adds a manual back-fill flow. Some legacy actions and variables from earlier versions remain in the reference build and are labelled **Legacy** in the reference. It keeps the kit's HTTP actions for the Graph calls; for your own build, consider a [custom connector](#recommended-consider-a-custom-connector) instead. See [Origins and credit](docs/ACTION_REFERENCE.md#origins-and-credit).
 
+**Built with GitHub Copilot.** The very first build was created manually. Further versions and changes have since been made with GitHub Copilot, using the skills in the [Power Automate plugin](https://github.com/microsoft/power-platform-skills/blob/main/plugins/power-automate/README.md) from [microsoft/power-platform-skills](https://github.com/microsoft/power-platform-skills). Treat this solution as a vibe-coded demonstration of how Power Automate can pull data from the audit log, and review every action before you use it in your own build.
+
 ## Related
 
 - [Action reference](docs/ACTION_REFERENCE.md): every action in both flows, what it does and why it exists.
 - [Documentation site](https://ryanbowie.github.io/copilot-interaction-logging/): this guide as a single page, with an architecture diagram, annotated screenshots and a build-from-scratch step tracker.
 - [Custom Agent Reporting – Architecture](https://github.com/RyanBowie/custom-agent-reporting-architecture): a reference architecture for tenant-wide agent reporting that uses this build as its interaction-telemetry source.
-- More community projects: [Power Platform Solution Reviewer](https://ryanbowie.github.io/copilot-studio-powerplatform-solution-reviewer-site/), [SharePoint Search Hub](https://ryanbowie.github.io/copilot-studio-sharepoint-search-hub/), [Power BI Agent](https://ryanbowie.github.io/copilot-studio-powerbi-agent/) and [Documentation Builder](https://ryanbowie.github.io/copilot-studio-documentation-builder/).
+- More community projects: [Power Platform Solution Reviewer](https://ryanbowie.github.io/copilot-studio-powerplatform-solution-reviewer-site/), [SharePoint Search Hub](https://ryanbowie.github.io/copilot-studio-sharepoint-search-hub/), [Power BI Agent](https://ryanbowie.github.io/copilot-studio-powerbi-agent/), [Documentation Builder](https://ryanbowie.github.io/copilot-studio-documentation-builder/) and [AI Video Creation Guide](https://ryanbowie.github.io/ai-video-creation-guide/).
 - Microsoft Purview: [Audit logs for Copilot and AI applications](https://learn.microsoft.com/purview/audit-copilot), [get started with auditing](https://learn.microsoft.com/purview/audit-get-started) and [auditing solutions](https://learn.microsoft.com/purview/audit-solutions-overview).
 
 ## Licence

@@ -87,6 +87,8 @@ The pattern is the same: an app registration, a scheduled flow that creates a Mi
 
 It keeps the kit's HTTP actions for the Graph calls. For your own build, consider a custom connector instead (see [Consider a custom connector](#consider-a-custom-connector)).
 
+**Built with GitHub Copilot.** The very first build was created manually. Further versions and changes have since been made with GitHub Copilot, using the skills in the [Power Automate plugin](https://github.com/microsoft/power-platform-skills/blob/main/plugins/power-automate/README.md) from [microsoft/power-platform-skills](https://github.com/microsoft/power-platform-skills). Treat this solution as a vibe-coded demonstration of how Power Automate can pull data from the audit log, and review every action before you use it in your own build.
+
 **Legacy leftovers.** The reference build still contains actions, variables and environment variables from earlier versions of the pattern that nothing reads. They are listed in the tables with the **Legacy** label so that you can match them to the screenshots and leave them out:
 
 - Composes `Compose_2`, `minutes_back`, `start_time_minutes_back` and `end_time_minutes_back`, and the two environment variables they read.
