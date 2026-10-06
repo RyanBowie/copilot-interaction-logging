@@ -41,6 +41,7 @@ The build has two cloud flows that share the same design. The scheduled flow col
   - [D4: Upsert each record](#d4-upsert-each-record)
 - [Phases E and F: Error handling and completeness](#phases-e-and-f-error-handling-and-completeness)
 - [HTTP authentication](#http-authentication)
+  - [Consider a custom connector](#consider-a-custom-connector)
 - [Graph permissions](#graph-permissions)
 - [Environment variables](#environment-variables)
 - [Upsert mapping](#upsert-mapping)
@@ -83,6 +84,8 @@ The pattern is the same: an app registration, a scheduled flow that creates a Mi
 - It lets you choose between an Azure Key Vault secret and a plain-text environment variable (not recommended) for the app secret.
 - It ends the run as **Failed** with a clear message when collection is incomplete, instead of finishing silently.
 - It adds a manual flow to back-fill a date range.
+
+It keeps the kit's HTTP actions for the Graph calls. For your own build, consider a custom connector instead (see [Consider a custom connector](#consider-a-custom-connector)).
 
 **Legacy leftovers.** The reference build still contains actions, variables and environment variables from earlier versions of the pattern that nothing reads. They are listed in the tables with the **Legacy** label so that you can match them to the screenshots and leave them out:
 
@@ -195,6 +198,8 @@ sequenceDiagram
 | Built-in actions | Variables, Compose, Condition, Scope, Do until, Apply to each, Delay, Parse JSON, Select, Terminate | No connector licence needed. |
 
 Because the flows use premium connectors, the flow owner needs a licence that includes them, or the flows need a Process licence. Check [Types of Power Automate licences](https://learn.microsoft.com/power-platform/admin/power-automate-licensing/types) and the [licensing FAQ](https://learn.microsoft.com/power-platform/admin/power-automate-licensing/faqs) for current terms.
+
+The HTTP action comes from the CoE Starter Kit pattern. If you replace it with a custom connector, that's premium too (see [Consider a custom connector](#consider-a-custom-connector)).
 
 ## Phase A: Initialise
 
@@ -580,6 +585,17 @@ If the API becomes available in another cloud, change the audience, the authorit
 | Commercial and GCC | `https://graph.microsoft.com` | `https://login.windows.net` |
 | GCC High | `https://graph.microsoft.us` | `https://login.microsoftonline.us` |
 | DoD | `https://dod-graph.microsoft.us` | `https://login.microsoftonline.us` |
+
+### Consider a custom connector
+
+The HTTP actions come from the CoE Starter Kit pattern. Before you go to production, review them, and consider a [custom connector](https://learn.microsoft.com/connectors/custom-connectors/) for the three Graph calls instead. The README sets out [why, and what to check before you switch](../README.md#recommended-consider-a-custom-connector). For the actions in this reference, a connector changes the following:
+
+- **[D1 to D3](#phase-d-collect-from-microsoft-graph)** become connector actions. The `authentication` block above moves into the connector's security settings and its connection. Keep secure outputs on, because the responses still hold personal data.
+- **[Phase B](#phase-b-resolve-the-graph-secret)** is no longer needed, because the flow doesn't handle the secret.
+- **The sign-in is no longer app-only.** "Currently, client credentials grant type is not supported by custom connectors" ([authentication](https://learn.microsoft.com/connectors/custom-connectors/connection-parameters)). The connection signs in as a user account with delegated permissions, or the connector calls an endpoint you host that signs in to Graph with a managed identity. Review the access that either option gives.
+- **D3 paging** has to follow the whole `@odata.nextLink` URL, because Graph says not to extract its `$skiptoken` ([paging](https://learn.microsoft.com/graph/paging)).
+- **Environment variables** can set the connector's host, base URL, client ID and client secret, but "environment variables aren't supported in actions, triggers, or policies". Use a Secret-type variable backed by Key Vault for a client secret. After you change a value, save the connector again: "custom connectors need to be resaved to use the updated environment variable value" ([environment variables in custom connectors](https://learn.microsoft.com/connectors/custom-connectors/environment-variables)).
+- **The data policy** allows the connector with Dataverse, instead of HTTP ([data policies for custom connectors](https://learn.microsoft.com/power-platform/admin/dlp-custom-connector-parity)).
 
 ## Graph permissions
 
@@ -1177,7 +1193,7 @@ These are the known problems in the reference build, with a fix for each. The [C
 
 ## Clean-build checklist
 
-Use this list when you build your own flows from this reference. Each item fixes a [known issue](#known-issues) or removes something you don't need. Test each change in a sandbox before you rely on it.
+Use this list when you build your own flows from this reference. Each item fixes a [known issue](#known-issues), removes something you don't need or makes a recommended change. Test each change in a sandbox before you rely on it.
 
 **Graph and the query**
 
@@ -1188,6 +1204,7 @@ Use this list when you build your own flows from this reference. Each item fixes
 - [ ] Fail the run when `isRecordCountLimitExceeded` is `true`.
 - [ ] Set the records URL only after the query has succeeded.
 - [ ] Skip paging when there's no query ID.
+- [ ] Review the HTTP actions, and consider a custom connector for the Graph calls (see [Consider a custom connector](#consider-a-custom-connector)).
 
 **Paging and upserts**
 

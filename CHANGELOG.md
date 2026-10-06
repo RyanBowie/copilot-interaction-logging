@@ -2,6 +2,12 @@
 
 Notable changes to this guide. The guide is documentation only: no solution package, flow export or source code is published.
 
+## 2026-10-06
+
+### Added
+
+- **Custom connector recommendation.** The flows call Graph with HTTP actions because they're adapted from the CoE Starter Kit pattern. The guide now recommends reviewing them and considering a custom connector instead. It sets out the benefits and what to check first, including the change of sign-in, because custom connectors don't support the client credentials grant. See [Recommended: consider a custom connector](README.md#recommended-consider-a-custom-connector) and, on the site, [The HTTP calls](https://ryanbowie.github.io/copilot-interaction-logging/#custom-connector).
+
 ## 2026-10-03
 
 First version of the build guide.

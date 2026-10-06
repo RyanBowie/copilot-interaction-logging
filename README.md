@@ -21,6 +21,7 @@ The build collects no prompt or response text.
 - [Prerequisites and permissions](#prerequisites-and-permissions)
 - [How it works](#how-it-works)
 - [The HTTP calls](#the-http-calls)
+  - [Recommended: consider a custom connector](#recommended-consider-a-custom-connector)
 - [Secret-handling decision: how the client secret is stored](#secret-handling-decision-how-the-client-secret-is-stored)
 - [Environment variables](#environment-variables)
 - [Build from scratch](#build-from-scratch)
@@ -95,7 +96,7 @@ Prompts and responses aren't held in the audit log. They're stored in users' mai
 | Power Platform | The builder is a System Administrator or System Customizer in that environment | Needed to create the tables, environment variables, connection reference and flows. |
 | Power Platform | A Microsoft Dataverse connection, owned by the flow owner | Mapped to the build's connection reference ([connection references](https://learn.microsoft.com/power-apps/maker/data-platform/create-connection-reference)). |
 | Power Platform | A premium Power Automate licence for the flow owner; for a busy tenant, consider a Process licence for the scheduled flow | The HTTP and Dataverse connectors are premium. Each record costs several Power Platform requests, so a busy tenant can exceed a user licence's daily request limit; see [Limitations](#limitations). |
-| Power Platform | A data policy that allows HTTP and Dataverse together | Otherwise the flows are suspended. |
+| Power Platform | A data policy that allows HTTP and Dataverse together (or your custom connector and Dataverse, if you [use one](#recommended-consider-a-custom-connector)) | Otherwise the flows are suspended. |
 | Azure (option A only) | A Key Vault, the `Microsoft.PowerPlatform` resource provider, and RBAC role assignments | See [option A](#option-a--azure-key-vault-recommended). |
 
 ## How it works
@@ -163,7 +164,7 @@ Details, and how to size the limits for your volumes: [Loop limits](docs/ACTION_
 
 ## The HTTP calls
 
-Three HTTP actions do all the talking to Microsoft Graph. `AuditLogQuery` creates an audit log query, `AuditLogQueryStatus` waits for it to finish, and `AuditLogRecords` reads its records a page at a time. This section shows what each one sends and what the Parse JSON action after it expects back. The flows use no Graph connector: the HTTP actions sign in on their own.
+Three HTTP actions do all the talking to Microsoft Graph. `AuditLogQuery` creates an audit log query, `AuditLogQueryStatus` waits for it to finish, and `AuditLogRecords` reads its records a page at a time. This section shows what each one sends and what the Parse JSON action after it expects back. The flows use no Graph connector: the HTTP actions sign in on their own, as in the CoE Starter Kit pattern. For your own build, [consider a custom connector](#recommended-consider-a-custom-connector).
 
 **How each call signs in.** All three actions use **Active Directory OAuth** to get an app-only token, so no user signs in and no connection is needed.
 
@@ -231,6 +232,26 @@ Turn on secure inputs for all three actions, so the secret and the token request
 > - Turn on secure outputs for `AuditLogRecords`, because each page holds user names, IP addresses and file names ([Securing run history](docs/ACTION_REFERENCE.md#securing-run-history)).
 
 Every action, with its inputs and run-after settings: [D1](docs/ACTION_REFERENCE.md#d1-create-the-audit-log-query), [D2](docs/ACTION_REFERENCE.md#d2-wait-for-the-query-to-finish), [D3](docs/ACTION_REFERENCE.md#d3-fetch-a-page-of-records), [HTTP authentication](docs/ACTION_REFERENCE.md#http-authentication) and [Limits and throttling](docs/ACTION_REFERENCE.md#limits-and-throttling).
+
+### Recommended: consider a custom connector
+
+> [!TIP]
+> **Review the HTTP actions before you go to production.** The flows call Graph with the built-in HTTP action because they're adapted from the CoE Starter Kit's audit log flows, which work the same way. Consider wrapping the three Graph calls in a [custom connector](https://learn.microsoft.com/connectors/custom-connectors/) instead.
+
+**Why it helps**
+
+- **Governance.** Data policies can classify a custom connector on its own, by name in an environment or by host URL across the tenant ([data policies for custom connectors](https://learn.microsoft.com/power-platform/admin/dlp-custom-connector-parity)). The environment then doesn't have to allow the general-purpose HTTP connector.
+- **No secret in the flow.** The connector and its connection hold the sign-in, so no secret passes through the flow's actions or run history, and the Phase B secret lookup is no longer needed.
+- **Reuse.** The three calls become named operations with defined request and response schemas, shared by every flow that uses the connector.
+
+**Check before you switch**
+
+- **The sign-in changes.** Microsoft notes: "Currently, client credentials grant type is not supported by custom connectors" ([authentication](https://learn.microsoft.com/connectors/custom-connectors/connection-parameters)). That's the app-only sign-in the HTTP actions use. The connection would sign in as a user account with delegated Graph permissions instead, or the connector would call an endpoint you host, for example in Azure API Management, that signs in to Graph with a managed identity. Either way, who holds the access changes, so put it through the same security review as the app registration.
+- **Secrets.** If the connector needs a client secret, keep it in a Secret-type environment variable backed by Azure Key Vault. A Text-type one "isn't secure. These values aren't encrypted" ([environment variables in custom connectors](https://learn.microsoft.com/connectors/custom-connectors/environment-variables)).
+- **Paging.** Graph says to use the entire `@odata.nextLink` URL: "Don't try to extract the `$skiptoken` or `$skip` value and use it in a different request" ([paging](https://learn.microsoft.com/graph/paging)). Make sure the connector can follow that URL.
+- **Re-test.** Rebuild D1 to D3 in a sandbox, and compare the query wait, paging, retries and row counts with the HTTP build before you remove the HTTP actions. Both are premium, so licensing doesn't change.
+
+What changes action by action: [Consider a custom connector](docs/ACTION_REFERENCE.md#consider-a-custom-connector).
 
 ## Secret-handling decision: how the client secret is stored
 
@@ -307,7 +328,7 @@ No solution package is published, so you create every component yourself, in thi
 3. **Create a solution.** In the development environment, create a solution with your own publisher, and build everything below inside it ([solution concepts](https://learn.microsoft.com/power-platform/alm/solution-concepts-alm), [create a solution](https://learn.microsoft.com/power-apps/maker/data-platform/create-solution)).
 4. **Create the three tables** with the columns in [Dataverse tables](docs/ACTION_REFERENCE.md#dataverse-tables-written-by-the-flows), applying its clean-build changes ([create tables](https://learn.microsoft.com/power-apps/maker/data-platform/create-edit-entities-portal)). When a flow sets a choice column, pick the option by its label.
 5. **Create the environment variables** in the table above ([environment variables in flows](https://learn.microsoft.com/power-apps/maker/data-platform/environmentvariables-power-automate)).
-6. **Create a connection reference** for Microsoft Dataverse, mapped to a connection owned by the flow owner.
+6. **Create a connection reference** for Microsoft Dataverse, mapped to a connection owned by the flow owner. If you use a [custom connector](#recommended-consider-a-custom-connector) for the Graph calls, create it in the solution first, and add a connection reference for it too.
 7. **Build the scheduled flow** phase by phase, from [Phase A](docs/ACTION_REFERENCE.md#phase-a-initialise) to [Phases E and F](docs/ACTION_REFERENCE.md#phases-e-and-f-error-handling-and-completeness), then the [manual flow](docs/ACTION_REFERENCE.md#the-manual-flow). Apply the [recommended settings](docs/ACTION_REFERENCE.md#recommended-settings) and size the [loop limits](docs/ACTION_REFERENCE.md#loop-limits). Add a note to each action saying why it exists ([solution-aware flows](https://learn.microsoft.com/power-automate/overview-solution-flows)).
 8. **Validate.** Run the manual flow over one day that's at least four days old. Compare the row count with a Purview Audit search for the same day, check the run log and error rows, and confirm that run history hides the secret. Work through the [clean-build checklist](docs/ACTION_REFERENCE.md#clean-build-checklist).
 9. **Lock it down.** Give report readers a read-only security role, schedule a bulk-delete job for your retention period, confirm the data policy and set up monitoring (see [Failure states and monitoring](#failure-states-and-monitoring)).
@@ -479,7 +500,7 @@ Run history is kept for 28 days ([limits and configuration](https://learn.micros
 
 This build is adapted from the audit log collection pattern in the [Microsoft Power Platform CoE Starter Kit](https://learn.microsoft.com/power-platform/guidance/coe/starter-kit), described in [Collect audit logs using an HTTP action with Microsoft Graph](https://learn.microsoft.com/power-platform/guidance/coe/setup-auditlog-http-graphapi). The kit is open source under the MIT licence at [github.com/microsoft/coe-starter-kit](https://github.com/microsoft/coe-starter-kit). Microsoft describes it as no longer actively maintained, with its core capabilities now in the Power Platform admin center. Credit for the original pattern belongs to the CoE Starter Kit team.
 
-This build changes the pattern: it collects only `CopilotInteraction` records into their own table, logs every run and every failure, lets you choose Key Vault or a plain-text variable (not recommended) for the secret, fails the run loudly when collection is incomplete, and adds a manual back-fill flow. Some legacy actions and variables from earlier versions remain in the reference build and are labelled **Legacy** in the reference. See [Origins and credit](docs/ACTION_REFERENCE.md#origins-and-credit).
+This build changes the pattern: it collects only `CopilotInteraction` records into their own table, logs every run and every failure, lets you choose Key Vault or a plain-text variable (not recommended) for the secret, fails the run loudly when collection is incomplete, and adds a manual back-fill flow. Some legacy actions and variables from earlier versions remain in the reference build and are labelled **Legacy** in the reference. It keeps the kit's HTTP actions for the Graph calls; for your own build, consider a [custom connector](#recommended-consider-a-custom-connector) instead. See [Origins and credit](docs/ACTION_REFERENCE.md#origins-and-credit).
 
 ## Related
 
