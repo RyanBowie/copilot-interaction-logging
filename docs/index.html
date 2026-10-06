@@ -466,6 +466,7 @@ main { counter-reset: dlch; }
 #dl-progress { position: fixed; z-index: 60; top: 0; left: 0; width: 100%; height: 3px; background: linear-gradient(90deg, var(--cp-chart-blue), var(--cp-chart-purple), var(--cp-chart-magenta)); transform: scaleX(var(--dl-p, 0)); transform-origin: 0 50%; pointer-events: none; }
 html.dl-motion .dl-reveal { opacity: 0; transform: translateY(16px); transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1); }
 html.dl-motion .dl-reveal.dl-in { opacity: 1; transform: none; }
+html.dl-motion .dl-reveal.dl-now { transition: none; }
 
 /* Browser-frame chrome on screenshots */
 .shot-btn::before, .shot a[data-lightbox]::before { content: ""; display: block; height: 22px; border-bottom: 1px solid var(--cp-border); background: radial-gradient(circle, var(--cp-accent) 0 3px, transparent 3.6px) 12px 50% / 10px 10px no-repeat, radial-gradient(circle, var(--cp-border-strong) 0 3px, transparent 3.6px) 28px 50% / 10px 10px no-repeat, radial-gradient(circle, var(--cp-border-strong) 0 3px, transparent 3.6px) 44px 50% / 10px 10px no-repeat, var(--cp-surface-soft); }
@@ -1379,7 +1380,7 @@ html.dl-motion .dl-reveal.dl-in { opacity: 1; transform: none; }
         <li><strong>Agents</strong>, by <strong>Agent Id</strong> and <strong>Agent Platform</strong>, joined to your own agent inventory.</li>
         <li><strong>Collection health</strong> from the run log and error rows, including days with no rows (see <a href="#failures">Failure states</a>).</li>
       </ul>
-      <p>For a fuller example that combines this data with agent inventory from several platforms, see <a href="https://github.com/RyanBowie/custom-agent-reporting-architecture">Custom Agent Reporting – Architecture</a>. There, these tables sit in one reporting environment alongside the other collectors' tables, so its Power BI model reads them all through a single Dataverse connection. If you build both, put them in the same environment.</p>
+      <p>For a fuller example that combines this data with agent inventory from several platforms, see <a href="https://ryanbowie.github.io/custom-agent-reporting-architecture/">Custom Agent Reporting – Architecture</a>. There, these tables sit in one reporting environment alongside the other collectors' tables, so its Power BI model reads them all through a single Dataverse connection. If you build both, put them in the same environment.</p>
     </section>
 
     <section class="section" id="failures" aria-labelledby="failures-h">
@@ -1566,8 +1567,8 @@ html.dl-motion .dl-reveal.dl-in { opacity: 1; transform: none; }
           <p>Every action in both flows: what it does, why it exists, and what to change in a clean build.</p>
         </div>
         <div class="card">
-          <h3><a href="https://github.com/RyanBowie/custom-agent-reporting-architecture">Custom Agent Reporting – Architecture</a></h3>
-          <p>A reference architecture for tenant-wide agent reporting that uses this build as its interaction-telemetry source.</p>
+          <h3><a href="https://ryanbowie.github.io/custom-agent-reporting-architecture/">Custom Agent Reporting – Architecture</a></h3>
+          <p>An architecture showcase for tenant-wide agent reporting that uses this build as its interaction-telemetry source. No Power BI solution is provided.</p>
         </div>
       </div>
       <ul class="link-list">
@@ -1594,6 +1595,7 @@ html.dl-motion .dl-reveal.dl-in { opacity: 1; transform: none; }
         <li><a class="dl-card" href="https://ryanbowie.github.io/copilot-studio-powerbi-agent/"><span class="dl-no" aria-hidden="true">05</span><strong>Power BI Agent</strong><span class="dl-desc">A standard Copilot Studio agent that writes DAX and queries Power BI semantic models as the signed-in user. No Fabric data agent needed.</span><span class="dl-go">Visit site →</span></a></li>
         <li><a class="dl-card" href="https://ryanbowie.github.io/copilot-studio-documentation-builder/"><span class="dl-no" aria-hidden="true">06</span><strong>Documentation Builder</strong><span class="dl-desc">Template-aligned technical documents from Copilot Studio, comparing the standard and GitHub Copilot harnesses with observed results.</span><span class="dl-go">Visit site →</span></a></li>
         <li><a class="dl-card" href="https://ryanbowie.github.io/ai-video-creation-guide/"><span class="dl-no" aria-hidden="true">07</span><strong>AI Video Creation Guide</strong><span class="dl-desc">Make code-drawn animated videos from one prompt with Claude Opus 5.5 in the GitHub Copilot app, with prompts, skills and examples.</span><span class="dl-go">Visit site →</span></a></li>
+        <li><a class="dl-card" href="https://github.com/RyanBowie/copilot-autoharness"><span class="dl-no" aria-hidden="true">08</span><strong>Copilot Autoharness</strong><span class="dl-desc">A self-learning skill layer for the GitHub Copilot app, ported from autoharness. It learns reusable skills from your sessions and prunes stale ones.</span><span class="dl-go">View repository →</span></a></li>
       </ol>
     </aside>
     <!-- dl-others:end -->
@@ -1965,11 +1967,15 @@ html.dl-motion .dl-reveal.dl-in { opacity: 1; transform: none; }
   if (!motion) return;
   root.classList.add("dl-motion");
 
-  // Sections below the fold fade up once as they arrive.
+  // Sections below the fold fade up once as they arrive. A section holding a
+  // link target shows at once instead: while it is still rising, a jump into it
+  // would land 16px out, under the sticky header.
   const fold = window.innerHeight;
+  const idOf = (hash) => { try { return decodeURIComponent(hash.slice(1)); } catch (err) { return ""; } };
+  const hashed = location.hash ? document.getElementById(idOf(location.hash)) : null;
   const targets = Array.prototype.filter.call(
     document.querySelectorAll("main > section:not(.hero), main > .dl-series, main > .dl-others"),
-    (el) => el.getBoundingClientRect().top > fold
+    (el) => el.getBoundingClientRect().top > fold && !(hashed && el.contains(hashed))
   );
   const io = new IntersectionObserver((entries) => {
     entries.forEach((e) => {
@@ -1979,6 +1985,23 @@ html.dl-motion .dl-reveal.dl-in { opacity: 1; transform: none; }
     });
   }, { rootMargin: "0px 0px -6% 0px" });
   targets.forEach((el) => { el.classList.add("dl-reveal"); io.observe(el); });
+  const settle = (id) => {
+    const el = id ? document.getElementById(id) : null;
+    const sec = el ? el.closest(".dl-reveal:not(.dl-in)") : null;
+    if (!sec) return null;
+    sec.classList.add("dl-now", "dl-in");
+    io.unobserve(sec);
+    return el;
+  };
+  document.addEventListener("click", (e) => {
+    const a = e.target.closest ? e.target.closest('a[href^="#"]') : null;
+    if (a) settle(idOf(a.getAttribute("href")));
+  });
+  // Back, forward or an edited address scroll before this fires, so re-aim.
+  window.addEventListener("hashchange", () => {
+    const el = settle(idOf(location.hash));
+    if (el) el.scrollIntoView({ block: "start" });
+  });
 
   // Hero numbers count up once, only when the facts are already on screen.
   const facts = document.querySelector(".hero .facts");

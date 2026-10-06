@@ -413,7 +413,7 @@ Ideas for a first report:
 - **Agents**, by **Agent Id** and **Agent Platform**, joined to your own agent inventory.
 - **Collection health**, from the run log and error rows, including days with no rows (see [Failure states and monitoring](#failure-states-and-monitoring)).
 
-For a fuller example that combines this data with agent inventory from several platforms, see [Custom Agent Reporting – Architecture](https://github.com/RyanBowie/custom-agent-reporting-architecture).
+For a fuller example that combines this data with agent inventory from several platforms, see [Custom Agent Reporting – Architecture](https://ryanbowie.github.io/custom-agent-reporting-architecture/).
 
 ## Failure states and monitoring
 
@@ -508,8 +508,8 @@ This build changes the pattern: it collects only `CopilotInteraction` records in
 
 - [Action reference](docs/ACTION_REFERENCE.md): every action in both flows, what it does and why it exists.
 - [Documentation site](https://ryanbowie.github.io/copilot-interaction-logging/): this guide as a single page, with an architecture diagram, annotated screenshots and a build-from-scratch step tracker.
-- [Custom Agent Reporting – Architecture](https://github.com/RyanBowie/custom-agent-reporting-architecture): a reference architecture for tenant-wide agent reporting that uses this build as its interaction-telemetry source.
-- More community projects: [Power Platform Solution Reviewer](https://ryanbowie.github.io/copilot-studio-powerplatform-solution-reviewer-site/), [SharePoint Search Hub](https://ryanbowie.github.io/copilot-studio-sharepoint-search-hub/), [Power BI Agent](https://ryanbowie.github.io/copilot-studio-powerbi-agent/), [Documentation Builder](https://ryanbowie.github.io/copilot-studio-documentation-builder/) and [AI Video Creation Guide](https://ryanbowie.github.io/ai-video-creation-guide/).
+- [Custom Agent Reporting – Architecture](https://ryanbowie.github.io/custom-agent-reporting-architecture/): an architecture showcase for tenant-wide agent reporting that uses this build as its interaction-telemetry source. No Power BI solution is provided.
+- More community projects: [Power Platform Solution Reviewer](https://ryanbowie.github.io/copilot-studio-powerplatform-solution-reviewer-site/), [SharePoint Search Hub](https://ryanbowie.github.io/copilot-studio-sharepoint-search-hub/), [Power BI Agent](https://ryanbowie.github.io/copilot-studio-powerbi-agent/), [Documentation Builder](https://ryanbowie.github.io/copilot-studio-documentation-builder/), [AI Video Creation Guide](https://ryanbowie.github.io/ai-video-creation-guide/) and [Copilot Autoharness](https://github.com/RyanBowie/copilot-autoharness).
 - Microsoft Purview: [Audit logs for Copilot and AI applications](https://learn.microsoft.com/purview/audit-copilot), [get started with auditing](https://learn.microsoft.com/purview/audit-get-started) and [auditing solutions](https://learn.microsoft.com/purview/audit-solutions-overview).
 
 ## Licence
