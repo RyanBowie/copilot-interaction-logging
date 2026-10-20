@@ -36,7 +36,37 @@
     });
   }
 
+  /* Visitor switch for the cursor colour/following effects, remembered across pages and sites of this origin. */
+  var KEY = "fx-cursor";
+  function stored() { try { return localStorage.getItem(KEY); } catch (e) { return null; } }
+  function off() { return root.classList.contains("fx-cursor-off"); }
+  function cursorToggle() {
+    if (!fine) return;
+    if (stored() === "off") root.classList.add("fx-cursor-off");
+    if ($(".fx-cursor-toggle")) return;
+    var btn = document.createElement("button");
+    btn.type = "button"; btn.className = "fx-cursor-toggle";
+    function paint() {
+      var on = !off();
+      btn.setAttribute("aria-pressed", String(on));
+      btn.textContent = on ? "Cursor effects: on" : "Cursor effects: off";
+      btn.title = on ? "Turn off the cursor colour and trail on blank space" : "Turn on the cursor colour and trail on blank space";
+    }
+    btn.addEventListener("click", function () {
+      root.classList.toggle("fx-cursor-off");
+      try { localStorage.setItem(KEY, off() ? "off" : "on"); } catch (e) {}
+      paint();
+    });
+    paint();
+    var head = $("header"), gh = head && $('a[href*="github.com/RyanBowie"]', head);
+    var host = head && $(".inner, .top, .hero-inner, nav", head);
+    if (gh) gh.parentNode.insertBefore(btn, gh.nextSibling);
+    else if (host) host.appendChild(btn);
+    else { btn.classList.add("fx-cursor-fixed"); document.body.appendChild(btn); }
+  }
+
   community();
+  if (!reduce && !window.matchMedia("(forced-colors: active)").matches) cursorToggle();
   if (cfg.hubOnly || reduce || window.matchMedia("(forced-colors: active)").matches) return;
 
   /* Blank = bare layout background: no text of its own, no fill, border, shadow or image, and not inside content.
@@ -110,9 +140,9 @@
     }
     function kick() { if (!raf && visible) raf = requestAnimationFrame(loop); }
     function pos(e) { var r = host.getBoundingClientRect(); mouse.x = e.clientX - r.left; mouse.y = e.clientY - r.top; }
-    host.addEventListener("pointermove", function (e) { if (!blank(e.target, host)) { if (mouse.on) { mouse.on = false; kick(); } return; } pos(e); mouse.on = true; kick(); });
+    host.addEventListener("pointermove", function (e) { if (off() || !blank(e.target, host)) { if (mouse.on) { mouse.on = false; kick(); } return; } pos(e); mouse.on = true; kick(); });
     host.addEventListener("pointerleave", function () { mouse.on = false; kick(); });
-    host.addEventListener("pointerdown", function (e) { if (!blank(e.target, host)) return; pos(e); ripples.push({ x: mouse.x, y: mouse.y, t: performance.now() }); kick(); });
+    host.addEventListener("pointerdown", function (e) { if (off() || !blank(e.target, host)) return; pos(e); ripples.push({ x: mouse.x, y: mouse.y, t: performance.now() }); kick(); });
     window.addEventListener("resize", function () { size(); draw(performance.now()); });
     if ("IntersectionObserver" in window) new IntersectionObserver(function (en) { visible = en[0].isIntersecting; if (visible) kick(); }).observe(host);
     new MutationObserver(function () { colors(); draw(performance.now()); }).observe(root, { attributes: true, attributeFilter: ["data-theme"] });
@@ -128,7 +158,7 @@
     var N = 10, blocks = [], idx = 0, lx = -1, ly = -1;
     for (var i = 0; i < N; i++) { var b = document.createElement("div"); b.className = "fx-trail-block"; b.setAttribute("aria-hidden", "true"); document.body.appendChild(b); blocks.push(b); }
     document.addEventListener("mousemove", function (e) {
-      if (inHost(e.target) || !blank(e.target)) return;
+      if (off() || inHost(e.target) || !blank(e.target)) return;
       var x = 20 * Math.floor(e.clientX / 20), y = 20 * Math.floor(e.clientY / 20);
       if (x === lx && y === ly) return;
       lx = x; ly = y; idx = (idx + 1) % N;

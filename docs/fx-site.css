@@ -9,6 +9,14 @@ html.fx-on .hero::before { background-image: none; }
 
 .fx-trail-block { position: fixed; left: 0; top: 0; width: 20px; height: 20px; z-index: 70; pointer-events: none; opacity: 0; transition: opacity .25s ease-out; font: 700 13px/20px var(--mono, ui-monospace, Consolas, monospace); text-align: center; color: #151515; }
 .fx-trail-block.fx-active { opacity: .95; transition: none; }
+.fx-cursor-toggle { appearance: none; margin: 0 0 0 10px; padding: 6px 12px; border: 1px solid var(--cp-border-strong, #777); border-radius: 999px; background: transparent; color: var(--cp-text, inherit); font: 600 .8rem/1.2 var(--font, system-ui, sans-serif); white-space: nowrap; cursor: pointer; vertical-align: middle; transition: background .2s, border-color .2s; }
+.fx-cursor-toggle:hover { border-color: var(--cp-accent, #a78bfa); }
+.fx-cursor-toggle:focus-visible { outline: 2px solid var(--cp-accent, #a78bfa); outline-offset: 3px; }
+.fx-cursor-toggle[aria-pressed="true"]::before { content: "● "; color: var(--cp-accent, #a78bfa); }
+.fx-cursor-fixed { position: fixed; top: 10px; right: 10px; z-index: 90; background: var(--cp-bg-elevated, #181822); }
+.fx-cursor-off .fx-trail-block { display: none; }
+@media (max-width: 720px) { .fx-cursor-toggle { padding: 5px 9px; font-size: .72rem; } }
+@media print { .fx-cursor-toggle { display: none !important; } }
 
 .fx-dec { position: relative; display: inline-block; }
 .fx-dec .fx-ph { visibility: hidden; }
